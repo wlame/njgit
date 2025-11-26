@@ -143,8 +143,8 @@ func ResolveTokenAuth(cfg *config.GitConfig) (transport.AuthMethod, error) {
 	var token string
 
 	// Check config file first
-	if cfg.GitHubToken != "" {
-		token = cfg.GitHubToken
+	if cfg.Token != "" {
+		token = cfg.Token
 	} else if envToken := os.Getenv("GITHUB_TOKEN"); envToken != "" {
 		// Standard GitHub Actions environment variable
 		token = envToken

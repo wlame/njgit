@@ -29,30 +29,68 @@ type Config struct {
 
 // GitConfig holds Git repository configuration
 type GitConfig struct {
-	// URL is the Git repository URL (SSH or HTTPS)
-	// Example: "git@github.com:org/repo.git" or "https://github.com/org/repo.git"
-	URL string `mapstructure:"url"`
+	// Backend specifies which backend to use: "git" or "github-api"
+	// "git" - Uses local Git repository with go-git (supports any Git provider)
+	// "github-api" - Uses GitHub REST API directly (GitHub only, no local repo)
+	// Default: "git"
+	Backend string `mapstructure:"backend"`
+
+	// === Common Configuration (both backends) ===
 
 	// Branch is the Git branch to use (default: "main")
 	Branch string `mapstructure:"branch"`
-
-	// AuthMethod specifies how to authenticate: "ssh", "token", or "auto"
-	// "auto" will try SSH first, then fall back to token
-	AuthMethod string `mapstructure:"auth_method"`
-
-	// SSHKeyPath is the path to the SSH private key (optional)
-	// If empty, will use SSH agent or default ~/.ssh/id_rsa
-	SSHKeyPath string `mapstructure:"ssh_key_path"`
-
-	// GitHubToken is the GitHub personal access token for HTTPS authentication
-	// Can also be set via GITHUB_TOKEN or GH_TOKEN environment variables
-	GitHubToken string `mapstructure:"github_token"`
 
 	// AuthorName is the name to use in Git commits
 	AuthorName string `mapstructure:"author_name"`
 
 	// AuthorEmail is the email to use in Git commits
 	AuthorEmail string `mapstructure:"author_email"`
+
+	// === Git Backend Configuration ===
+
+	// URL is the Git repository URL (SSH or HTTPS)
+	// Example: "git@github.com:org/repo.git" or "https://github.com/org/repo.git"
+	// Used by: git backend
+	URL string `mapstructure:"url"`
+
+	// LocalPath is the local directory where the Git repository is stored
+	// If the repo exists, it will be reused (pulled). If not, it will be cloned.
+	// Default: Current directory
+	// Used by: git backend
+	LocalPath string `mapstructure:"local_path"`
+
+	// RepoName is the name of the repository directory
+	// Default: "nomad-changelog-repo"
+	// Used by: git backend
+	RepoName string `mapstructure:"repo_name"`
+
+	// AuthMethod specifies how to authenticate: "ssh", "token", or "auto"
+	// "auto" will try SSH first, then fall back to token
+	// Used by: git backend
+	AuthMethod string `mapstructure:"auth_method"`
+
+	// SSHKeyPath is the path to the SSH private key (optional)
+	// If empty, will use SSH agent or default ~/.ssh/id_ed25519, ~/.ssh/id_rsa, etc.
+	// Used by: git backend
+	SSHKeyPath string `mapstructure:"ssh_key_path"`
+
+	// === GitHub API Backend Configuration ===
+
+	// Owner is the GitHub repository owner (user or organization)
+	// Example: "myorg" for github.com/myorg/nomad-jobs
+	// Used by: github-api backend
+	Owner string `mapstructure:"owner"`
+
+	// Repo is the GitHub repository name
+	// Example: "nomad-jobs" for github.com/myorg/nomad-jobs
+	// Used by: github-api backend
+	Repo string `mapstructure:"repo"`
+
+	// Token is the GitHub personal access token for API authentication
+	// Can also be set via GITHUB_TOKEN or GH_TOKEN environment variables
+	// Required for: github-api backend, optional for git backend (HTTPS only)
+	// IMPORTANT: For security, prefer environment variables over config file
+	Token string `mapstructure:"token"`
 }
 
 // NomadConfig holds Nomad cluster configuration
@@ -169,10 +207,13 @@ func Load(configPath string) (*Config, error) {
 // These defaults are used when no value is provided in the config file or environment
 func setDefaults(v *viper.Viper) {
 	// Git defaults
+	v.SetDefault("git.backend", "git")
 	v.SetDefault("git.branch", "main")
 	v.SetDefault("git.auth_method", "auto")
 	v.SetDefault("git.author_name", "nomad-changelog")
 	v.SetDefault("git.author_email", "nomad-changelog@localhost")
+	v.SetDefault("git.local_path", ".") // Current directory
+	v.SetDefault("git.repo_name", "nomad-changelog-repo")
 
 	// Nomad defaults
 	// No defaults for address or token - these must be provided
@@ -215,11 +256,11 @@ func applyEnvOverrides(cfg *Config) {
 	}
 
 	// Override GitHub token from GITHUB_TOKEN or GH_TOKEN if set and config is empty
-	if cfg.Git.GitHubToken == "" {
+	if cfg.Git.Token == "" {
 		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-			cfg.Git.GitHubToken = token
+			cfg.Git.Token = token
 		} else if token := os.Getenv("GH_TOKEN"); token != "" {
-			cfg.Git.GitHubToken = token
+			cfg.Git.Token = token
 		}
 	}
 
