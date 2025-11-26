@@ -1,0 +1,376 @@
+// Package hcl handles converting Nomad jobs to and from HCL format.
+// HCL (HashiCorp Configuration Language) is the native format for Nomad job files.
+package hcl
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/hashicorp/nomad/api"
+)
+
+// FormatJobAsHCL converts a Nomad job to HCL format
+// This is a simplified implementation that handles the most common job fields.
+// A full implementation would handle all possible Nomad job fields, but this
+// is sufficient for most use cases.
+//
+// We're using a simple string-based approach rather than the hclwrite package
+// because the Nomad API doesn't directly map to HCL structures. This gives us
+// more control over the output format.
+//
+// Parameters:
+//   - job: The Nomad job to convert (should be normalized first)
+//
+// Returns:
+//   - []byte: The HCL representation of the job
+//   - error: Any error encountered during formatting
+func FormatJobAsHCL(job *api.Job) ([]byte, error) {
+	if job == nil {
+		return nil, fmt.Errorf("job cannot be nil")
+	}
+
+	// Validate required fields
+	if job.ID == nil || *job.ID == "" {
+		return nil, fmt.Errorf("job ID is required")
+	}
+
+	// Build HCL as a string
+	// We use a strings.Builder for efficient string concatenation
+	var b strings.Builder
+
+	// Write the job block
+	// HCL syntax: job "name" { ... }
+	b.WriteString(fmt.Sprintf("job \"%s\" {\n", stringValue(job.ID)))
+
+	// Write job-level attributes in a consistent order
+	// Order matters for consistent output (needed for change detection)
+	writeJobAttributes(&b, job)
+
+	// Write task groups
+	if job.TaskGroups != nil && len(job.TaskGroups) > 0 {
+		for _, tg := range job.TaskGroups {
+			writeTaskGroup(&b, tg)
+		}
+	}
+
+	// Close the job block
+	b.WriteString("}\n")
+
+	return []byte(b.String()), nil
+}
+
+// writeJobAttributes writes job-level attributes to the HCL output
+// These are the top-level job settings like namespace, datacenters, type, etc.
+func writeJobAttributes(b *strings.Builder, job *api.Job) {
+	// Namespace
+	if job.Namespace != nil && *job.Namespace != "" && *job.Namespace != "default" {
+		// Only write namespace if it's not the default
+		writeAttribute(b, 1, "namespace", stringValue(job.Namespace))
+	}
+
+	// Datacenters (list of strings)
+	if job.Datacenters != nil && len(job.Datacenters) > 0 {
+		writeListAttribute(b, 1, "datacenters", job.Datacenters)
+	}
+
+	// Type (service, batch, system)
+	if job.Type != nil && *job.Type != "" {
+		writeAttribute(b, 1, "type", stringValue(job.Type))
+	}
+
+	// Priority
+	if job.Priority != nil {
+		writeIntAttribute(b, 1, "priority", *job.Priority)
+	}
+
+	// Region
+	if job.Region != nil && *job.Region != "" {
+		writeAttribute(b, 1, "region", stringValue(job.Region))
+	}
+
+	// Meta (key-value pairs)
+	if job.Meta != nil && len(job.Meta) > 0 {
+		writeMapBlock(b, 1, "meta", job.Meta)
+	}
+
+	// Update strategy
+	if job.Update != nil {
+		writeUpdateBlock(b, 1, job.Update)
+	}
+
+	// Add a blank line after attributes for readability
+	b.WriteString("\n")
+}
+
+// writeTaskGroup writes a task group block to the HCL output
+// Task groups are the main organizational unit in Nomad jobs
+func writeTaskGroup(b *strings.Builder, tg *api.TaskGroup) {
+	if tg == nil || tg.Name == nil {
+		return
+	}
+
+	// Write task group block
+	// Indentation level 1 (inside job block)
+	indent(b, 1)
+	b.WriteString(fmt.Sprintf("group \"%s\" {\n", stringValue(tg.Name)))
+
+	// Count (number of instances)
+	if tg.Count != nil {
+		writeIntAttribute(b, 2, "count", *tg.Count)
+	}
+
+	// Meta
+	if tg.Meta != nil && len(tg.Meta) > 0 {
+		writeMapBlock(b, 2, "meta", tg.Meta)
+	}
+
+	// Write tasks
+	if tg.Tasks != nil && len(tg.Tasks) > 0 {
+		b.WriteString("\n")
+		for _, task := range tg.Tasks {
+			writeTask(b, task)
+		}
+	}
+
+	// Close task group block
+	indent(b, 1)
+	b.WriteString("}\n\n")
+}
+
+// writeTask writes a task block to the HCL output
+// Tasks are the actual work units (e.g., Docker containers)
+func writeTask(b *strings.Builder, task *api.Task) {
+	if task == nil || task.Name == "" {
+		return
+	}
+
+	// Write task block
+	// Indentation level 2 (inside task group)
+	indent(b, 2)
+	b.WriteString(fmt.Sprintf("task \"%s\" {\n", task.Name))
+
+	// Driver (docker, exec, java, etc.)
+	if task.Driver != "" {
+		writeAttribute(b, 3, "driver", task.Driver)
+	}
+
+	// Config (driver-specific configuration)
+	if task.Config != nil && len(task.Config) > 0 {
+		writeConfigBlock(b, 3, task.Config)
+	}
+
+	// Environment variables
+	if task.Env != nil && len(task.Env) > 0 {
+		writeMapBlock(b, 3, "env", task.Env)
+	}
+
+	// Resources
+	if task.Resources != nil {
+		writeResourcesBlock(b, 3, task.Resources)
+	}
+
+	// Meta
+	if task.Meta != nil && len(task.Meta) > 0 {
+		writeMapBlock(b, 3, "meta", task.Meta)
+	}
+
+	// Close task block
+	indent(b, 2)
+	b.WriteString("}\n")
+}
+
+// writeUpdateBlock writes an update strategy block
+func writeUpdateBlock(b *strings.Builder, level int, update *api.UpdateStrategy) {
+	if update == nil {
+		return
+	}
+
+	indent(b, level)
+	b.WriteString("update {\n")
+
+	if update.MaxParallel != nil && *update.MaxParallel > 0 {
+		writeIntAttribute(b, level+1, "max_parallel", *update.MaxParallel)
+	}
+
+	if update.HealthCheck != nil && *update.HealthCheck != "" {
+		writeAttribute(b, level+1, "health_check", *update.HealthCheck)
+	}
+
+	indent(b, level)
+	b.WriteString("}\n")
+}
+
+// writeResourcesBlock writes a resources block
+func writeResourcesBlock(b *strings.Builder, level int, resources *api.Resources) {
+	if resources == nil {
+		return
+	}
+
+	indent(b, level)
+	b.WriteString("resources {\n")
+
+	if resources.CPU != nil && *resources.CPU > 0 {
+		writeIntAttribute(b, level+1, "cpu", *resources.CPU)
+	}
+
+	if resources.MemoryMB != nil && *resources.MemoryMB > 0 {
+		writeIntAttribute(b, level+1, "memory", *resources.MemoryMB)
+	}
+
+	indent(b, level)
+	b.WriteString("}\n")
+}
+
+// writeConfigBlock writes a config block with driver-specific settings
+func writeConfigBlock(b *strings.Builder, level int, config map[string]interface{}) {
+	if len(config) == 0 {
+		return
+	}
+
+	indent(b, level)
+	b.WriteString("config {\n")
+
+	// Sort keys for consistent output
+	keys := make([]string, 0, len(config))
+	for k := range config {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Write each config value
+	for _, key := range keys {
+		value := config[key]
+		writeConfigValue(b, level+1, key, value)
+	}
+
+	indent(b, level)
+	b.WriteString("}\n")
+}
+
+// writeConfigValue writes a single config key-value pair
+// This handles different value types (string, int, bool, list)
+func writeConfigValue(b *strings.Builder, level int, key string, value interface{}) {
+	indent(b, level)
+
+	switch v := value.(type) {
+	case string:
+		b.WriteString(fmt.Sprintf("%s = \"%s\"\n", key, escapeString(v)))
+	case int:
+		b.WriteString(fmt.Sprintf("%s = %d\n", key, v))
+	case int64:
+		b.WriteString(fmt.Sprintf("%s = %d\n", key, v))
+	case float64:
+		b.WriteString(fmt.Sprintf("%s = %g\n", key, v))
+	case bool:
+		b.WriteString(fmt.Sprintf("%s = %t\n", key, v))
+	case []interface{}:
+		// List of values
+		b.WriteString(fmt.Sprintf("%s = [", key))
+		for i, item := range v {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			if s, ok := item.(string); ok {
+				b.WriteString(fmt.Sprintf("\"%s\"", escapeString(s)))
+			} else {
+				b.WriteString(fmt.Sprintf("%v", item))
+			}
+		}
+		b.WriteString("]\n")
+	default:
+		// For other types, use default string representation
+		b.WriteString(fmt.Sprintf("%s = %v\n", key, v))
+	}
+}
+
+// writeMapBlock writes a map block (for meta, env, etc.)
+func writeMapBlock(b *strings.Builder, level int, name string, m map[string]string) {
+	if len(m) == 0 {
+		return
+	}
+
+	indent(b, level)
+	b.WriteString(fmt.Sprintf("%s {\n", name))
+
+	// Sort keys for consistent output
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Write each key-value pair
+	for _, key := range keys {
+		indent(b, level+1)
+		b.WriteString(fmt.Sprintf("%s = \"%s\"\n", key, escapeString(m[key])))
+	}
+
+	indent(b, level)
+	b.WriteString("}\n")
+}
+
+// writeAttribute writes a simple string attribute
+func writeAttribute(b *strings.Builder, level int, name, value string) {
+	if value == "" {
+		return
+	}
+	indent(b, level)
+	b.WriteString(fmt.Sprintf("%s = \"%s\"\n", name, escapeString(value)))
+}
+
+// writeIntAttribute writes an integer attribute
+func writeIntAttribute(b *strings.Builder, level int, name string, value int) {
+	indent(b, level)
+	b.WriteString(fmt.Sprintf("%s = %d\n", name, value))
+}
+
+// writeListAttribute writes a list of strings
+func writeListAttribute(b *strings.Builder, level int, name string, values []string) {
+	if len(values) == 0 {
+		return
+	}
+
+	indent(b, level)
+	b.WriteString(fmt.Sprintf("%s = [", name))
+
+	for i, v := range values {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(fmt.Sprintf("\"%s\"", escapeString(v)))
+	}
+
+	b.WriteString("]\n")
+}
+
+// indent writes the appropriate indentation for the given level
+// Each level is 2 spaces
+func indent(b *strings.Builder, level int) {
+	for i := 0; i < level; i++ {
+		b.WriteString("  ")
+	}
+}
+
+// stringValue safely extracts a string from a *string
+// Returns empty string if the pointer is nil
+func stringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// escapeString escapes special characters in strings for HCL
+// This handles quotes, newlines, and other special characters
+func escapeString(s string) string {
+	// Replace backslashes first
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	// Replace quotes
+	s = strings.ReplaceAll(s, "\"", "\\\"")
+	// Replace newlines
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	// Replace tabs
+	s = strings.ReplaceAll(s, "\t", "\\t")
+	return s
+}
