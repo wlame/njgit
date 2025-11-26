@@ -1,0 +1,87 @@
+# Example configuration file for nomad-changelog
+# Copy this file to nomad-changelog.toml and adjust for your environment
+
+# Git repository configuration
+[git]
+# URL of the Git repository where job specs will be stored
+# Supports both HTTPS and SSH protocols
+# Examples:
+#   HTTPS: https://github.com/username/nomad-jobs.git
+#   SSH: git@github.com:username/nomad-jobs.git
+url = "git@github.com:myorg/nomad-jobs.git"
+
+# Branch to use for storing job specs (default: main)
+branch = "main"
+
+# Authentication method: "ssh", "token", or "auto"
+# "auto" will try SSH first, then fall back to token
+auth_method = "ssh"
+
+# Path to SSH private key (only used if auth_method is "ssh")
+# Leave empty to use SSH agent or default ~/.ssh/id_rsa
+ssh_key_path = ""
+
+# GitHub personal access token (only used if auth_method is "token")
+# Can also be set via GITHUB_TOKEN or GH_TOKEN environment variable
+# Leave empty to read from environment variable
+github_token = ""
+
+# Git commit author name (default: nomad-changelog)
+author_name = "nomad-changelog"
+
+# Git commit author email (default: nomad-changelog@localhost)
+author_email = "bot@example.com"
+
+# Nomad configuration
+[nomad]
+# Nomad API address
+# Can also be set via NOMAD_ADDR environment variable
+# If both are set, this value takes precedence
+address = "https://nomad.example.com:4646"
+
+# Nomad ACL token
+# Can also be set via NOMAD_TOKEN environment variable
+# If both are set, this value takes precedence
+# SECURITY NOTE: Consider using environment variables for tokens
+token = ""
+
+# Optional: Path to CA certificate for TLS verification
+# ca_cert = "/path/to/ca.pem"
+
+# Optional: Skip TLS verification (not recommended for production)
+# tls_skip_verify = false
+
+# Jobs to track
+# Each job is identified by its name and namespace
+[[jobs]]
+name = "web-server"
+namespace = "production"
+
+[[jobs]]
+name = "api-server"
+namespace = "production"
+
+[[jobs]]
+name = "worker"
+namespace = "production"
+
+[[jobs]]
+name = "redis"
+namespace = "infrastructure"
+
+# Change detection configuration (optional)
+[changes]
+# Fields to ignore when detecting changes (advanced users)
+# Default ignores Nomad's internal metadata fields
+ignore_fields = [
+    "ModifyIndex",
+    "ModifyTime",
+    "JobModifyIndex",
+    "SubmitTime",
+    "CreateIndex",
+    "Status",
+    "StatusDescription",
+]
+
+# Whether to commit when only metadata changes (default: false)
+commit_metadata_only = false

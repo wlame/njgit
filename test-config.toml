@@ -1,0 +1,19 @@
+# Test configuration file
+[git]
+url = "git@github.com:wlame/nomad-jobs-test.git"
+branch = "main"
+auth_method = "ssh"
+author_name = "nomad-changelog-bot"
+author_email = "bot@example.com"
+
+[nomad]
+address = "http://localhost:4646"
+token = "test-token"
+
+[[jobs]]
+name = "test-job-1"
+namespace = "default"
+
+[[jobs]]
+name = "test-job-2"
+namespace = "production"
