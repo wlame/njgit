@@ -74,6 +74,16 @@ type GitConfig struct {
 	// Used by: git backend
 	SSHKeyPath string `mapstructure:"ssh_key_path"`
 
+	// LocalOnly indicates if the repository should be local-only (no remote operations)
+	// When true:
+	//   - No clone operations (user must initialize repo themselves)
+	//   - No push operations (only local commits)
+	//   - No pull operations (no remote sync)
+	//   - URL is optional (not required)
+	// Default: false
+	// Used by: git backend
+	LocalOnly bool `mapstructure:"local_only"`
+
 	// === GitHub API Backend Configuration ===
 
 	// Owner is the GitHub repository owner (user or organization)
@@ -214,6 +224,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("git.author_email", "nomad-changelog@localhost")
 	v.SetDefault("git.local_path", ".") // Current directory
 	v.SetDefault("git.repo_name", "nomad-changelog-repo")
+	v.SetDefault("git.local_only", false)
 
 	// Nomad defaults
 	// No defaults for address or token - these must be provided

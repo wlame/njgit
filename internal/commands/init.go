@@ -94,7 +94,14 @@ func initRun(cmd *cobra.Command, args []string) error {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
 
-	nomadAddr := prompt(reader, "Nomad address", "http://localhost:4646")
+	// Check for NOMAD_ADDR environment variable
+	defaultNomadAddr := "http://localhost:4646"
+	if envAddr := os.Getenv("NOMAD_ADDR"); envAddr != "" {
+		defaultNomadAddr = envAddr
+		fmt.Printf("  (Using NOMAD_ADDR from environment: %s)\n", envAddr)
+	}
+
+	nomadAddr := prompt(reader, "Nomad address", defaultNomadAddr)
 	config.WriteString("\n# Nomad cluster configuration\n")
 	config.WriteString("[nomad]\n")
 	config.WriteString(fmt.Sprintf("address = \"%s\"\n", nomadAddr))

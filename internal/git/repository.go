@@ -28,6 +28,29 @@ type Repository struct {
 	auth transport.AuthMethod
 }
 
+// NewLocalRepository creates a Repository wrapper for an existing local repository
+// This is used for local-only mode where we don't need client/auth
+//
+// Parameters:
+//   - path: Path to the local Git repository
+//
+// Returns:
+//   - *Repository: The repository wrapper
+//   - error: Any error encountered
+func NewLocalRepository(path string) (*Repository, error) {
+	// Open the existing repository
+	repo, err := git.PlainOpen(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	return &Repository{
+		repo:   repo,
+		config: nil, // No config needed for local-only
+		auth:   nil, // No auth needed for local-only
+	}, nil
+}
+
 // ReadFile reads a file from the repository
 // The path is relative to the repository root
 //
@@ -396,6 +419,11 @@ func (r *Repository) GetFileAtCommit(commitHash, path string) ([]byte, error) {
 //
 // Note: If the repository is already up to date, this is not an error
 func (r *Repository) Pull() error {
+	// Skip pull if no auth configured (local-only mode)
+	if r.auth == nil {
+		return nil
+	}
+
 	// Get the worktree (working directory of the repository)
 	w, err := r.GetWorktree()
 	if err != nil {

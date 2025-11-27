@@ -35,11 +35,36 @@ go get github.com/hashicorp/nomad/api@latest
 go get github.com/go-git/go-git/v5@latest
 go get github.com/hashicorp/hcl/v2@latest
 
-# Build the binary
+# Build the binary for your current platform
 go build -o nomad-changelog ./cmd/nomad-changelog
+
+# Or use the build script to create binaries for all platforms
+./build.sh
+
+# This creates binaries in the dist/ directory:
+# - dist/nomad-changelog-linux-amd64
+# - dist/nomad-changelog-linux-arm64
+# - dist/nomad-changelog-darwin-amd64 (macOS Intel)
+# - dist/nomad-changelog-darwin-arm64 (macOS Apple Silicon)
+# - dist/nomad-changelog-windows-amd64.exe
 
 # Run it
 ./nomad-changelog --help
+```
+
+### Cross-Compilation
+
+To build for a specific platform:
+
+```bash
+# Linux (64-bit)
+GOOS=linux GOARCH=amd64 go build -o nomad-changelog-linux ./cmd/nomad-changelog
+
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 go build -o nomad-changelog-darwin ./cmd/nomad-changelog
+
+# Windows
+GOOS=windows GOARCH=amd64 go build -o nomad-changelog.exe ./cmd/nomad-changelog
 ```
 
 ## Configuration
@@ -77,9 +102,9 @@ namespace = "production"
 
 ### Backend Options
 
-#### Git Backend (Default)
+#### Git Backend with Remote (Default)
 
-Best for local development and any Git provider (GitHub, GitLab, Bitbucket, etc.).
+Best for standard workflows with any Git provider (GitHub, GitLab, Bitbucket, etc.).
 
 ```toml
 [git]
@@ -89,6 +114,37 @@ branch = "main"
 local_path = "."  # Where to store the local repository
 repo_name = "nomad-changelog-repo"  # Repository directory name
 ```
+
+#### Git Backend (Local-Only Mode)
+
+Best for local development without automatic push/pull. **You manage the repository yourself.**
+
+```toml
+[git]
+backend = "git"
+local_only = true  # Enable local-only mode
+local_path = "/home/user/repos"  # Directory containing the repository
+repo_name = "nomad-jobs"  # Repository directory name
+branch = "main"
+```
+
+**Setup Requirements**:
+```bash
+# Initialize the repository yourself
+git init -b main /home/user/repos/nomad-jobs
+cd /home/user/repos/nomad-jobs
+git config user.name "nomad-changelog"
+git config user.email "bot@example.com"
+
+# Optional: Add a remote (you'll push manually)
+git remote add origin git@github.com:myorg/nomad-jobs.git
+```
+
+**Behavior**:
+- ❌ No automatic cloning
+- ❌ No automatic push/pull
+- ✅ Local commits only
+- ✅ You control when to push/pull
 
 #### GitHub API Backend
 

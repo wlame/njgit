@@ -125,10 +125,16 @@ func (r *Repository) HasChanges() (bool, error) {
 // Push pushes commits to the remote repository
 // This is equivalent to "git push origin <branch>"
 // This sends all local commits that aren't on the remote yet
+// In local-only mode (auth is nil), this is a no-op
 //
 // Returns:
 //   - error: Any error encountered during push
 func (r *Repository) Push() error {
+	// Skip push if no auth configured (local-only mode)
+	if r.auth == nil {
+		return nil
+	}
+
 	// Prepare push options
 	pushOpts := &git.PushOptions{
 		// RemoteName is typically "origin"

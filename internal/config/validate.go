@@ -50,24 +50,40 @@ func (g *GitConfig) Validate() error {
 			backend, strings.Join(validBackends, ", "))
 	}
 
+	// Local-only mode is only supported with git backend
+	if g.LocalOnly && backend != "git" {
+		return fmt.Errorf("local_only mode is only supported with git backend (not %s)", backend)
+	}
+
 	// Validate based on backend type
 	if backend == "git" {
-		// Git backend requires URL
-		if g.URL == "" {
-			return fmt.Errorf("url is required for git backend")
-		}
+		// In local-only mode, URL is optional
+		if !g.LocalOnly {
+			// Git backend requires URL for remote mode
+			if g.URL == "" {
+				return fmt.Errorf("url is required for git backend (or set local_only = true)")
+			}
 
-		// Validate URL format
-		// It should be either SSH (git@github.com:user/repo.git) or HTTPS (https://github.com/user/repo.git)
-		if !isValidGitURL(g.URL) {
-			return fmt.Errorf("invalid git URL: %s (must be SSH or HTTPS format)", g.URL)
-		}
+			// Validate URL format
+			// It should be either SSH (git@github.com:user/repo.git) or HTTPS (https://github.com/user/repo.git)
+			if !isValidGitURL(g.URL) {
+				return fmt.Errorf("invalid git URL: %s (must be SSH or HTTPS format)", g.URL)
+			}
 
-		// Validate auth method
-		validAuthMethods := []string{"ssh", "token", "auto"}
-		if g.AuthMethod != "" && !contains(validAuthMethods, g.AuthMethod) {
-			return fmt.Errorf("invalid auth_method: %s (must be one of: %s)",
-				g.AuthMethod, strings.Join(validAuthMethods, ", "))
+			// Validate auth method (only needed for remote mode)
+			validAuthMethods := []string{"ssh", "token", "auto"}
+			if g.AuthMethod != "" && !contains(validAuthMethods, g.AuthMethod) {
+				return fmt.Errorf("invalid auth_method: %s (must be one of: %s)",
+					g.AuthMethod, strings.Join(validAuthMethods, ", "))
+			}
+		} else {
+			// Local-only mode specific validations
+			if g.LocalPath == "" {
+				return fmt.Errorf("local_path is required for local_only mode")
+			}
+			if g.RepoName == "" {
+				return fmt.Errorf("repo_name is required for local_only mode")
+			}
 		}
 	} else if backend == "github-api" {
 		// GitHub API backend requires owner and repo

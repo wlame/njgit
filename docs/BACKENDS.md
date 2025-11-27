@@ -16,22 +16,24 @@ A **backend** is how nomad-changelog stores and tracks changes to your Nomad job
 
 ### Available Backends
 
-1. **Git Backend** (default) - Uses a local Git repository
-2. **GitHub API Backend** - Uses GitHub REST API directly (no local repository)
+1. **Git Backend with Remote** (default) - Uses a local Git repository with automatic push/pull
+2. **Git Backend (Local-Only)** - Uses a local Git repository without automatic push/pull
+3. **GitHub API Backend** - Uses GitHub REST API directly (no local repository)
 
 ## Backend Comparison
 
-| Feature | Git Backend | GitHub API Backend |
-|---------|-------------|-------------------|
-| **Local Repository** | Yes (cloned to disk) | No (stateless) |
-| **Git Providers** | Any (GitHub, GitLab, Bitbucket, etc.) | GitHub only |
-| **Authentication** | SSH keys, tokens, or auto | GitHub token required |
-| **Disk Space** | Uses disk for repo | Minimal (no repo) |
-| **Repository Reuse** | Yes (persists between runs) | N/A (no local repo) |
-| **Offline Usage** | Possible (commit locally) | No (requires API access) |
-| **Commits per File** | Multiple files per commit | One file per commit* |
-| **Performance** | Fast (local operations) | Slower (API calls) |
-| **CI/CD Friendly** | Both work well | Better for ephemeral environments |
+| Feature | Git (Remote) | Git (Local-Only) | GitHub API |
+|---------|--------------|------------------|------------|
+| **Local Repository** | Yes (cloned) | Yes (user-initialized) | No (stateless) |
+| **Git Providers** | Any | N/A (no remote) | GitHub only |
+| **Automatic Clone** | Yes | No | N/A |
+| **Automatic Push** | Yes | No | Yes |
+| **Automatic Pull** | Yes | No | N/A |
+| **Authentication** | SSH/token required | Not needed | GitHub token required |
+| **Repository Reuse** | Yes | Yes | N/A |
+| **Offline Usage** | Commit only | Yes (fully offline) | No |
+| **User Control** | Automatic | Full manual control | Automatic |
+| **Best For** | Standard workflows | Local development | CI/CD ephemeral environments |
 
 *The GitHub API doesn't support multi-file commits, so each changed job creates a separate commit.
 
@@ -155,6 +157,214 @@ The Git backend is ideal for:
 - GitLab, Bitbucket, or other non-GitHub providers
 - Environments with persistent storage
 - When you need offline commit capability
+
+## Git Backend (Local-Only Mode)
+
+The **Local-Only mode** is a variant of the Git backend for scenarios where you want complete control over the repository without any automatic remote operations.
+
+### Key Features
+
+- **User-Controlled Repository**: You initialize and manage the Git repository yourself
+- **No Automatic Operations**: Tool never clones, pushes, or pulls
+- **Local Commits Only**: Changes are committed locally - you decide when to push
+- **Optional Remote**: You can configure remotes and push/pull manually whenever you want
+- **Fully Offline**: Works completely offline without any remote connectivity
+
+### When to Use Local-Only Mode
+
+- **Local Development with Manual Control**: When you want to review commits before pushing
+- **Air-Gapped Environments**: Systems without internet access to remote Git servers
+- **Testing and Experimentation**: Test the tool without affecting remote repositories
+- **Complex Git Workflows**: When you need to handle merges, rebases, or other Git operations manually
+
+### Configuration
+
+```toml
+[git]
+backend = "git"
+local_only = true  # Enable local-only mode
+local_path = "/home/user/repositories"  # Directory containing the repository
+repo_name = "nomad-jobs"  # Repository directory name
+branch = "main"
+author_name = "nomad-changelog"
+author_email = "bot@example.com"
+```
+
+**Required fields**:
+- `local_only = true` - Enable local-only mode
+- `local_path` - Directory containing the repository
+- `repo_name` - Repository directory name
+- `branch` - Branch to commit to
+
+**Not required** (ignored in local-only mode):
+- `url` - No URL needed (repository is local)
+- `auth_method` - No authentication needed
+- `ssh_key_path` - Not used
+- `token` - Not used
+
+### Setup Instructions
+
+#### 1. Initialize the Repository
+
+You must initialize the Git repository yourself before using nomad-changelog:
+
+```bash
+# Create and initialize the repository
+cd /home/user/repositories
+git init -b main nomad-jobs
+cd nomad-jobs
+
+# Configure Git user (required for commits)
+git config user.name "nomad-changelog"
+git config user.email "bot@example.com"
+```
+
+#### 2. Optional: Add a Remote
+
+If you want to push changes manually later, configure a remote:
+
+```bash
+git remote add origin git@github.com:myorg/nomad-jobs.git
+```
+
+#### 3. Configure nomad-changelog
+
+Create your config with `local_only = true`:
+
+```toml
+[git]
+backend = "git"
+local_only = true
+local_path = "/home/user/repositories"
+repo_name = "nomad-jobs"
+branch = "main"
+author_name = "nomad-changelog"
+author_email = "bot@example.com"
+```
+
+#### 4. Run Sync
+
+```bash
+nomad-changelog sync
+```
+
+The tool will commit changes locally. You can push manually whenever you want:
+
+```bash
+cd /home/user/repositories/nomad-jobs
+git push origin main
+```
+
+### Workflow Examples
+
+#### Example 1: Local Development with Manual Push
+
+Perfect for developers who want to review commits before pushing:
+
+```bash
+# Sync changes (commits locally)
+nomad-changelog sync
+
+# Review commits
+cd /home/user/repositories/nomad-jobs
+git log --oneline
+
+# Review changes
+git diff origin/main
+
+# Push when ready
+git push origin main
+```
+
+#### Example 2: Air-Gapped Environment
+
+For environments without internet access to remote Git servers:
+
+```bash
+# On isolated system - sync creates local commits
+nomad-changelog sync
+
+# Bundle changes for transfer to another system
+cd /home/user/repositories/nomad-jobs
+git bundle create /mnt/usb/changes.bundle HEAD ^origin/main
+
+# On internet-connected system
+git clone /mnt/usb/changes.bundle
+cd changes
+git push github main
+```
+
+#### Example 3: Testing and Experimentation
+
+Test the tool without affecting remote repositories:
+
+```bash
+# Create test repository
+git init -b main /tmp/test-repo
+cd /tmp/test-repo
+git config user.name "test"
+git config user.email "test@test.com"
+
+# Configure nomad-changelog to use test repo
+# (edit config to point to /tmp/test-repo)
+
+# Experiment freely
+nomad-changelog sync
+
+# Inspect results
+git log --oneline
+
+# Clean up when done
+rm -rf /tmp/test-repo
+```
+
+### Behavior Differences
+
+| Operation | Remote Mode | Local-Only Mode |
+|-----------|-------------|-----------------|
+| **Repository Setup** | Automatic clone | Manual `git init` required |
+| **Before Sync** | Pulls latest changes | No pull |
+| **After Commit** | Pushes automatically | No push (stays local) |
+| **Authentication** | Required (SSH/token) | Not needed |
+| **Remote URL** | Required | Optional |
+| **Error if repo missing** | Clones automatically | Error (must exist) |
+
+### Error Messages
+
+**"local-only mode requires existing git repository at /path"**:
+- **Cause**: Repository doesn't exist
+- **Solution**: Run `git init -b main /path` to create it
+
+**"local_only mode is only supported with git backend"**:
+- **Cause**: Trying to use `local_only` with `github-api` backend
+- **Solution**: Set `backend = "git"`
+
+**"local_path is required for local_only mode"**:
+- **Cause**: Missing `local_path` configuration
+- **Solution**: Add `local_path = "/path/to/repos"` to config
+
+### Advantages
+
+- ✅ **Full Control**: You decide exactly when to push/pull
+- ✅ **Offline Operation**: Works without any network connectivity
+- ✅ **No Authentication Needed**: No SSH keys or tokens required
+- ✅ **Standard Git Workflows**: Use any Git commands you want
+- ✅ **Manual Review**: Review all commits before pushing
+
+### Limitations
+
+- ❌ **Manual Setup Required**: Must initialize repository yourself
+- ❌ **No Automatic Push**: Changes stay local until you push manually
+- ❌ **No Automatic Pull**: Won't pull remote changes automatically
+- ❌ **Repository Must Exist**: Tool errors if repository doesn't exist
+
+### Best For
+
+- Local development where you want manual control over push/pull
+- Air-gapped or offline environments
+- Testing and experimentation without remote impact
+- Complex Git workflows requiring manual intervention
+- Learning and debugging
 
 ## GitHub API Backend
 
