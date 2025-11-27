@@ -188,6 +188,79 @@ func (c *Client) pullLatest(repo *git.Repository) error {
 	return nil
 }
 
+// Open opens an existing Git repository at the specified path
+// This is used when you want to work with a repository that's already been cloned
+//
+// Parameters:
+//
+//	path - The directory path where the repository is located
+//
+// Returns:
+//
+//	*Repository - The opened repository
+//	error - Any error that occurred
+//
+// Note: This does NOT pull latest changes. Call repository.Pull() if you need that.
+func (c *Client) Open(path string) (*Repository, error) {
+	// Check if the path exists and is a valid Git repository
+	gitDir := filepath.Join(path, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("not a git repository: %s", path)
+	}
+
+	// Open the repository
+	repo, err := git.PlainOpen(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository at %s: %w", path, err)
+	}
+
+	return &Repository{
+		repo:   repo,
+		config: c.config,
+		auth:   c.auth,
+	}, nil
+}
+
+// Clone clones the repository to the specified destination path
+// This creates a new clone of the remote repository
+//
+// Parameters:
+//
+//	destPath - Where to clone the repository
+//
+// Returns:
+//
+//	*Repository - The cloned repository
+//	error - Any error that occurred
+func (c *Client) Clone(destPath string) (*Repository, error) {
+	// Ensure the parent directory exists
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create parent directory: %w", err)
+	}
+
+	// Prepare clone options
+	cloneOpts := &git.CloneOptions{
+		URL:           c.config.URL,
+		Auth:          c.auth,
+		ReferenceName: plumbing.NewBranchReferenceName(c.config.Branch),
+		SingleBranch:  true,
+		Depth:         1,
+		Progress:      nil,
+	}
+
+	// Perform the clone
+	repo, err := git.PlainClone(destPath, false, cloneOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to clone repository %s to %s: %w", c.config.URL, destPath, err)
+	}
+
+	return &Repository{
+		repo:   repo,
+		config: c.config,
+		auth:   c.auth,
+	}, nil
+}
+
 // WorkDir returns the working directory path
 // This is where the repository is cloned/stored
 func (c *Client) WorkDir() string {

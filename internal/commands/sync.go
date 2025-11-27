@@ -7,8 +7,8 @@ import (
 
 	"github.com/hashicorp/nomad/api"
 	"github.com/spf13/cobra"
+	"github.com/wlame/nomad-changelog/internal/backend"
 	"github.com/wlame/nomad-changelog/internal/config"
-	gitpkg "github.com/wlame/nomad-changelog/internal/git"
 	"github.com/wlame/nomad-changelog/internal/hcl"
 	"github.com/wlame/nomad-changelog/internal/nomad"
 )
@@ -80,7 +80,17 @@ func syncRun(cmd *cobra.Command, args []string) error {
 	}
 
 	PrintInfo(fmt.Sprintf("Nomad: %s", cfg.Nomad.Address))
-	PrintInfo(fmt.Sprintf("Git: %s", cfg.Git.URL))
+
+	// Display backend info
+	backendType := cfg.Git.Backend
+	if backendType == "" {
+		backendType = "git"
+	}
+	if backendType == "git" {
+		PrintInfo(fmt.Sprintf("Backend: git (%s)", cfg.Git.URL))
+	} else {
+		PrintInfo(fmt.Sprintf("Backend: github-api (%s/%s)", cfg.Git.Owner, cfg.Git.Repo))
+	}
 
 	// 2. Create Nomad client
 	PrintInfo("Connecting to Nomad...")
@@ -101,36 +111,31 @@ func syncRun(cmd *cobra.Command, args []string) error {
 	}
 	PrintSuccess("Connected to Nomad")
 
-	// 3. Create Git client
+	// 3. Create backend
 	if !syncDryRun {
-		PrintInfo("Setting up Git repository...")
-		gitClient, err := gitpkg.NewClient(&cfg.Git)
+		PrintInfo("Setting up backend...")
+		backend, err := backend.NewBackend(&cfg.Git)
 		if err != nil {
-			return fmt.Errorf("failed to create Git client: %w", err)
+			return fmt.Errorf("failed to create backend: %w", err)
 		}
-		defer gitClient.Close()
+		defer backend.Close()
 
-		if IsVerbose() {
-			PrintInfo(fmt.Sprintf("Git auth: %s", gitClient.AuthMethod()))
+		if err := backend.Initialize(); err != nil {
+			return fmt.Errorf("failed to initialize backend: %w", err)
 		}
 
-		// Open or clone the repository
-		repo, err := gitClient.OpenOrClone()
-		if err != nil {
-			return fmt.Errorf("failed to open/clone repository: %w", err)
-		}
-		PrintSuccess("Git repository ready")
+		PrintSuccess(fmt.Sprintf("Backend ready (%s)", backend.GetName()))
 
 		// Perform the sync
-		return performSync(cfg, nomadClient, repo)
+		return performSync(cfg, nomadClient, backend)
 	} else {
-		// Dry run - no Git operations
+		// Dry run - no backend operations
 		return performDryRun(cfg, nomadClient)
 	}
 }
 
-// performSync performs the actual sync with Git operations
-func performSync(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Repository) error {
+// performSync performs the actual sync with backend operations
+func performSync(cfg *config.Config, nomadClient *nomad.Client, backend backend.Backend) error {
 	// Filter jobs if --jobs flag was provided
 	jobsToSync := getJobsToSync(cfg)
 
@@ -141,7 +146,7 @@ func performSync(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Rep
 
 	// Process each job
 	for _, jobCfg := range jobsToSync {
-		changed, err := syncJob(cfg, nomadClient, repo, jobCfg)
+		changed, err := syncJob(cfg, nomadClient, backend, jobCfg)
 		if err != nil {
 			// Log error but continue with other jobs
 			PrintError(fmt.Errorf("job %s/%s: %w", jobCfg.Namespace, jobCfg.Name, err))
@@ -174,7 +179,7 @@ func performSync(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Rep
 
 // syncJob syncs a single job
 // Returns true if the job changed, false otherwise
-func syncJob(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Repository, jobCfg config.JobConfig) (bool, error) {
+func syncJob(cfg *config.Config, nomadClient *nomad.Client, backend backend.Backend, jobCfg config.JobConfig) (bool, error) {
 	jobPath := fmt.Sprintf("%s/%s", jobCfg.Namespace, jobCfg.Name)
 	PrintInfo(fmt.Sprintf("Checking %s...", jobPath))
 
@@ -203,7 +208,7 @@ func syncJob(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Reposit
 
 	// 4. Check if file exists and compare
 	filePath := filepath.Join(jobCfg.Namespace, jobCfg.Name+".hcl")
-	fileExists, err := repo.FileExists(filePath)
+	fileExists, err := backend.FileExists(filePath)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if file exists: %w", err)
 	}
@@ -213,7 +218,7 @@ func syncJob(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Reposit
 
 	if fileExists {
 		// Read existing file
-		existingContent, err := repo.ReadFile(filePath)
+		existingContent, err := backend.ReadFile(filePath)
 		if err != nil {
 			return false, fmt.Errorf("failed to read existing file: %w", err)
 		}
@@ -245,29 +250,24 @@ func syncJob(cfg *config.Config, nomadClient *nomad.Client, repo *gitpkg.Reposit
 		fmt.Printf("    %s\n", changeDescription)
 	}
 
-	if err := repo.WriteFile(filePath, hclBytes); err != nil {
+	if err := backend.WriteFile(filePath, hclBytes); err != nil {
 		return false, fmt.Errorf("failed to write file: %w", err)
 	}
 
-	// 6. Stage the file
-	if err := repo.StageFile(filePath); err != nil {
-		return false, fmt.Errorf("failed to stage file: %w", err)
-	}
-
-	// 7. Create commit
+	// 6. Create commit
 	commitMsg := buildCommitMessage(jobPath, changeDescription)
-	hash, err := repo.Commit(commitMsg, cfg.Git.AuthorName, cfg.Git.AuthorEmail)
+	hash, err := backend.Commit(commitMsg)
 	if err != nil {
 		return false, fmt.Errorf("failed to commit: %w", err)
 	}
 
-	if IsVerbose() {
+	if IsVerbose() && hash != "" {
 		PrintInfo(fmt.Sprintf("  Committed: %s", hash[:8]))
 	}
 
-	// 8. Push (unless --no-push)
+	// 7. Push (unless --no-push)
 	if !syncNoPush {
-		if err := repo.Push(); err != nil {
+		if err := backend.Push(); err != nil {
 			return false, fmt.Errorf("failed to push: %w", err)
 		}
 		if IsVerbose() {

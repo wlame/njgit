@@ -25,7 +25,7 @@ INTEGRATION_PASSED=0
 # Run unit tests
 echo -e "${BLUE}[1/2] Running unit tests...${NC}"
 echo ""
-if go test -v ./tests/unit_test.go; then
+if go test -v -short ./tests; then
     UNIT_PASSED=1
     echo ""
     echo -e "${GREEN}✅ Unit tests passed${NC}"
@@ -44,7 +44,7 @@ echo -e "${BLUE}[2/2] Running integration tests...${NC}"
 echo "  DOCKER_HOST=$DOCKER_HOST"
 echo "  TESTCONTAINERS_RYUK_DISABLED=$TESTCONTAINERS_RYUK_DISABLED"
 echo ""
-if go test -v ./tests/integration_test.go; then
+if go test -v -run "TestNomadContainer|TestFetchAndNormalizeJob|TestGitRepository|TestFullSyncWorkflow|TestHistoryAndDeploy" ./tests; then
     INTEGRATION_PASSED=1
     echo ""
     echo -e "${GREEN}✅ Integration tests passed${NC}"

@@ -4,8 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/wlame/nomad-changelog/internal/config"
 )
@@ -243,4 +248,176 @@ func (r *Repository) GetWorktree() (*git.Worktree, error) {
 // This is an "escape hatch" for operations we haven't wrapped yet
 func (r *Repository) GetRepository() *git.Repository {
 	return r.repo
+}
+
+// CommitInfo represents information about a Git commit
+type CommitInfo struct {
+	Hash     string    // Short commit hash (8 characters)
+	FullHash string    // Full commit hash
+	Message  string    // Commit message
+	Author   string    // Author name
+	Email    string    // Author email
+	Date     time.Time // Commit date
+	Files    []string  // Files changed in this commit
+}
+
+// GetHistory returns the commit history for a specific file or all files
+// If path is empty, returns all commits
+// If path is specified, returns only commits that touched that file
+//
+// Parameters:
+//   - path: File path to filter by (empty for all commits)
+//   - maxCount: Maximum number of commits to return (0 for unlimited)
+//
+// Returns:
+//   - []CommitInfo: List of commits
+//   - error: Any error that occurred
+func (r *Repository) GetHistory(path string, maxCount int) ([]CommitInfo, error) {
+	var commits []CommitInfo
+
+	// Get HEAD reference
+	ref, err := r.repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	// Get commit log
+	logOptions := &git.LogOptions{
+		From: ref.Hash(),
+	}
+	if path != "" {
+		logOptions.PathFilter = func(p string) bool {
+			return p == path
+		}
+	}
+
+	commitIter, err := r.repo.Log(logOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get log: %w", err)
+	}
+	defer commitIter.Close()
+
+	count := 0
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		if maxCount > 0 && count >= maxCount {
+			return storer.ErrStop
+		}
+
+		// Get files changed in this commit
+		var files []string
+		if c.NumParents() > 0 {
+			parent, err := c.Parent(0)
+			if err == nil {
+				changes, err := parent.Patch(c)
+				if err == nil {
+					for _, fileStat := range changes.FilePatches() {
+						from, to := fileStat.Files()
+						if to != nil {
+							files = append(files, to.Path())
+						} else if from != nil {
+							files = append(files, from.Path())
+						}
+					}
+				}
+			}
+		}
+
+		hash := c.Hash.String()
+		shortHash := hash
+		if len(hash) > 8 {
+			shortHash = hash[:8]
+		}
+
+		commits = append(commits, CommitInfo{
+			Hash:     shortHash,
+			FullHash: hash,
+			Message:  strings.TrimSpace(c.Message),
+			Author:   c.Author.Name,
+			Email:    c.Author.Email,
+			Date:     c.Author.When,
+			Files:    files,
+		})
+
+		count++
+		return nil
+	})
+
+	if err != nil && err != storer.ErrStop {
+		return nil, fmt.Errorf("failed to iterate commits: %w", err)
+	}
+
+	return commits, nil
+}
+
+// GetFileAtCommit retrieves the content of a file at a specific commit
+//
+// Parameters:
+//   - commitHash: The commit hash (can be short or full)
+//   - path: The file path relative to repository root
+//
+// Returns:
+//   - []byte: File content
+//   - error: Any error that occurred
+func (r *Repository) GetFileAtCommit(commitHash, path string) ([]byte, error) {
+	// Resolve the commit hash
+	hash := plumbing.NewHash(commitHash)
+	commit, err := r.repo.CommitObject(hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit %s: %w", commitHash, err)
+	}
+
+	// Get the tree for this commit
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tree: %w", err)
+	}
+
+	// Get the file from the tree
+	file, err := tree.File(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file %s at commit %s: %w", path, commitHash, err)
+	}
+
+	// Read the file contents
+	content, err := file.Contents()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file contents: %w", err)
+	}
+
+	return []byte(content), nil
+}
+
+// Pull fetches and merges changes from the remote repository
+// This updates the local repository with the latest changes from the remote
+//
+// Returns:
+//
+//	error - Any error that occurred, or nil if successful
+//
+// Note: If the repository is already up to date, this is not an error
+func (r *Repository) Pull() error {
+	// Get the worktree (working directory of the repository)
+	w, err := r.GetWorktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	// Pull from the remote
+	// This fetches changes and merges them into the current branch
+	err = w.Pull(&git.PullOptions{
+		RemoteName: "origin",
+		Auth:       r.auth,
+	})
+
+	// Check if we're already up to date
+	// This is not an error - it just means no changes were fetched
+	if err == git.NoErrAlreadyUpToDate {
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to pull: %w", err)
+	}
+
+	return nil
 }

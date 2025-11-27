@@ -226,12 +226,3 @@ func createSampleJob(id string, modifyIndex uint64, submitTime int64) *api.Job {
 		},
 	}
 }
-
-// Helper functions for creating pointers
-func stringToPtr(s string) *string {
-	return &s
-}
-
-func intToPtr(i int) *int {
-	return &i
-}

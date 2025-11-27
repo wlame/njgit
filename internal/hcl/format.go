@@ -374,3 +374,46 @@ func escapeString(s string) string {
 	s = strings.ReplaceAll(s, "\t", "\\t")
 	return s
 }
+
+// ParseHCL parses HCL content and returns a Nomad Job struct
+// This uses the Nomad API client to parse HCL
+//
+// Parameters:
+//   - hclContent: The HCL content as bytes
+//
+// Returns:
+//   - *api.Job: The parsed job
+//   - error: Any error encountered during parsing
+func ParseHCL(hclContent []byte, nomadAddr ...string) (*api.Job, error) {
+	if len(hclContent) == 0 {
+		return nil, fmt.Errorf("HCL content is empty")
+	}
+
+	// Create a Nomad client configuration
+	config := api.DefaultConfig()
+
+	// If a Nomad address is provided, use it
+	if len(nomadAddr) > 0 && nomadAddr[0] != "" {
+		config.Address = nomadAddr[0]
+	}
+
+	// Disable TLS verification for testing
+	config.TLSConfig = &api.TLSConfig{
+		Insecure: true,
+	}
+
+	client, err := api.NewClient(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	// Use the client's Jobs().ParseHCL method
+	// Note: This makes a request to Nomad's /v1/jobs/parse endpoint
+	// The canonicalize parameter (false) means we don't process the job further
+	job, err := client.Jobs().ParseHCL(string(hclContent), false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse HCL: %w", err)
+	}
+
+	return job, nil
+}

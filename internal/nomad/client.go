@@ -200,3 +200,25 @@ func (c *Client) WaitForConnection(maxAttempts int, delay time.Duration) error {
 	// All attempts failed
 	return fmt.Errorf("failed to connect to Nomad after %d attempts: %w", maxAttempts, lastErr)
 }
+
+// DeployJob submits a job to Nomad for deployment
+// This is used to deploy or update a job in Nomad
+//
+// Parameters:
+//   - job: The Job specification to deploy
+//
+// Returns:
+//   - string: The evaluation ID created by Nomad
+//   - error: Any error encountered during deployment
+func (c *Client) DeployJob(job *api.Job) (string, error) {
+	// Register the job with Nomad
+	// This creates or updates the job
+	resp, _, err := c.client.Jobs().Register(job, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to register job: %w", err)
+	}
+
+	// Return the evaluation ID
+	// The evaluation ID can be used to track the deployment status
+	return resp.EvalID, nil
+}

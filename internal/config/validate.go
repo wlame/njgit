@@ -37,27 +37,54 @@ func (c *Config) Validate() error {
 
 // Validate checks if the Git configuration is valid
 func (g *GitConfig) Validate() error {
-	// URL is required
-	if g.URL == "" {
-		return fmt.Errorf("url is required")
+	// Default backend to "git" if not specified
+	backend := g.Backend
+	if backend == "" {
+		backend = "git"
 	}
 
-	// Validate URL format
-	// It should be either SSH (git@github.com:user/repo.git) or HTTPS (https://github.com/user/repo.git)
-	if !isValidGitURL(g.URL) {
-		return fmt.Errorf("invalid git URL: %s (must be SSH or HTTPS format)", g.URL)
+	// Validate backend type
+	validBackends := []string{"git", "github-api"}
+	if !contains(validBackends, backend) {
+		return fmt.Errorf("invalid backend: %s (must be one of: %s)",
+			backend, strings.Join(validBackends, ", "))
+	}
+
+	// Validate based on backend type
+	if backend == "git" {
+		// Git backend requires URL
+		if g.URL == "" {
+			return fmt.Errorf("url is required for git backend")
+		}
+
+		// Validate URL format
+		// It should be either SSH (git@github.com:user/repo.git) or HTTPS (https://github.com/user/repo.git)
+		if !isValidGitURL(g.URL) {
+			return fmt.Errorf("invalid git URL: %s (must be SSH or HTTPS format)", g.URL)
+		}
+
+		// Validate auth method
+		validAuthMethods := []string{"ssh", "token", "auto"}
+		if g.AuthMethod != "" && !contains(validAuthMethods, g.AuthMethod) {
+			return fmt.Errorf("invalid auth_method: %s (must be one of: %s)",
+				g.AuthMethod, strings.Join(validAuthMethods, ", "))
+		}
+	} else if backend == "github-api" {
+		// GitHub API backend requires owner and repo
+		if g.Owner == "" {
+			return fmt.Errorf("owner is required for github-api backend")
+		}
+		if g.Repo == "" {
+			return fmt.Errorf("repo is required for github-api backend")
+		}
+		if g.Token == "" {
+			return fmt.Errorf("token is required for github-api backend (set via GITHUB_TOKEN or GH_TOKEN env var)")
+		}
 	}
 
 	// Branch is required (though we set a default, double-check)
 	if g.Branch == "" {
 		return fmt.Errorf("branch is required")
-	}
-
-	// Validate auth method
-	validAuthMethods := []string{"ssh", "token", "auto"}
-	if !contains(validAuthMethods, g.AuthMethod) {
-		return fmt.Errorf("invalid auth_method: %s (must be one of: %s)",
-			g.AuthMethod, strings.Join(validAuthMethods, ", "))
 	}
 
 	// AuthorName and AuthorEmail should be set (we have defaults, but validate they're not empty)

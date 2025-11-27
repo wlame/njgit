@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/wlame/nomad-changelog/internal/backend"
 	"github.com/wlame/nomad-changelog/internal/config"
 	gitpkg "github.com/wlame/nomad-changelog/internal/git"
 	"github.com/wlame/nomad-changelog/internal/hcl"
@@ -521,6 +523,297 @@ func int64Ptr(i *int64) int64 {
 	return *i
 }
 
-func intToPtr(i int) *int {
-	return &i
+// TestHistoryAndDeploy tests the history viewing and deploy (rollback) functionality
+func TestHistoryAndDeploy(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+
+	// Start Nomad container
+	nomadContainer, nomadAddr, err := startNomadContainer(ctx)
+	if err != nil {
+		t.Fatalf("Failed to start Nomad container: %v", err)
+	}
+	defer nomadContainer.Terminate(ctx)
+
+	t.Logf("Nomad started at: %s", nomadAddr)
+
+	// Create Nomad client
+	nomadConfig := api.DefaultConfig()
+	nomadConfig.Address = nomadAddr
+	apiClient, err := api.NewClient(nomadConfig)
+	if err != nil {
+		t.Fatalf("Failed to create Nomad API client: %v", err)
+	}
+
+	// Wait for Nomad to be ready
+	for i := 1; i <= 10; i++ {
+		t.Logf("Waiting for Nomad API (attempt %d/10)...", i)
+		_, err := apiClient.Agent().Self()
+		if err == nil {
+			break
+		}
+		if i == 10 {
+			t.Fatalf("Nomad not ready after 10 attempts: %v", err)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	t.Log("✅ Successfully connected to Nomad container")
+
+	// Create a test job with version 1
+	jobV1 := createTestJob()
+	jobV1.Name = stringToPtr("rollback-test")
+	jobV1.ID = stringToPtr("rollback-test")
+	jobV1.TaskGroups[0].Tasks[0].Config = map[string]interface{}{
+		"image":   "busybox:latest",
+		"command": "/bin/sh",
+		"args":    []string{"-c", "echo 'version 1' && sleep 3600"},
+	}
+
+	// Deploy version 1 to Nomad
+	_, _, err = apiClient.Jobs().Register(jobV1, nil)
+	if err != nil {
+		t.Fatalf("Failed to deploy job v1: %v", err)
+	}
+	t.Log("Deployed job version 1")
+
+	// Create Git remote and local repos
+	remoteDir, err := os.MkdirTemp("", "nomad-changelog-remote-*")
+	if err != nil {
+		t.Fatalf("Failed to create remote dir: %v", err)
+	}
+	defer os.RemoveAll(remoteDir)
+
+	localDir, err := os.MkdirTemp("", "nomad-changelog-local-*")
+	if err != nil {
+		t.Fatalf("Failed to create local dir: %v", err)
+	}
+	defer os.RemoveAll(localDir)
+
+	t.Logf("Git remote at: %s", remoteDir)
+
+	// Initialize bare Git repo
+	cmd := exec.Command("git", "init", "--bare", "--initial-branch=main", remoteDir)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Failed to init bare repo: %v", err)
+	}
+
+	// Create initial commit in bare repo
+	tmpDir, err := os.MkdirTemp("", "git-init-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	exec.Command("git", "clone", remoteDir, tmpDir).Run()
+	exec.Command("git", "-C", tmpDir, "config", "user.email", "test@test.com").Run()
+	exec.Command("git", "-C", tmpDir, "config", "user.name", "test").Run()
+	os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0644)
+	exec.Command("git", "-C", tmpDir, "add", ".").Run()
+	exec.Command("git", "-C", tmpDir, "commit", "-m", "Initial commit").Run()
+	exec.Command("git", "-C", tmpDir, "push", "origin", "main").Run()
+
+	// Create config
+	cfg := &config.Config{
+		Git: config.GitConfig{
+			Backend:     "git",
+			URL:         remoteDir,
+			Branch:      "main",
+			AuthMethod:  "auto",
+			LocalPath:   localDir,
+			RepoName:    "test-repo",
+			AuthorName:  "test",
+			AuthorEmail: "test@test.com",
+		},
+		Nomad: config.NomadConfig{
+			Address: nomadAddr,
+		},
+		Jobs: []config.JobConfig{
+			{Name: "rollback-test", Namespace: "default"},
+		},
+	}
+
+	// Sync version 1
+	backend, err := backend.NewBackend(&cfg.Git)
+	if err != nil {
+		t.Fatalf("Failed to create backend: %v", err)
+	}
+	defer backend.Close()
+
+	if err := backend.Initialize(); err != nil {
+		t.Fatalf("Failed to initialize backend: %v", err)
+	}
+
+	// Create our nomad client wrapper
+	auth := &nomad.AuthConfig{
+		Address: nomadAddr,
+	}
+	nomadClient, err := nomad.NewClient(auth)
+	if err != nil {
+		t.Fatalf("Failed to create nomad client: %v", err)
+	}
+	defer nomadClient.Close()
+
+	// Fetch and write v1
+	spec, err := nomadClient.FetchJobSpec("default", "rollback-test")
+	if err != nil {
+		t.Fatalf("Failed to fetch job: %v", err)
+	}
+
+	normalized := nomad.NormalizeJob(spec, cfg.Changes.IgnoreFields)
+	hclBytes, err := hcl.FormatJobAsHCL(normalized)
+	if err != nil {
+		t.Fatalf("Failed to format HCL: %v", err)
+	}
+
+	if err := backend.WriteFile("default/rollback-test.hcl", hclBytes); err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	commitV1, err := backend.Commit("Update rollback-test\n\nDeployed version 1")
+	if err != nil {
+		t.Fatalf("Failed to commit v1: %v", err)
+	}
+
+	if err := backend.Push(); err != nil {
+		t.Fatalf("Failed to push v1: %v", err)
+	}
+
+	t.Logf("✅ Committed version 1: %s", commitV1)
+
+	// Now update the job to version 2
+	jobV2 := createTestJob()
+	jobV2.Name = stringToPtr("rollback-test")
+	jobV2.ID = stringToPtr("rollback-test")
+	jobV2.TaskGroups[0].Tasks[0].Config = map[string]interface{}{
+		"image":   "busybox:latest",
+		"command": "/bin/sh",
+		"args":    []string{"-c", "echo 'version 2' && sleep 3600"},
+	}
+
+	_, _, err = apiClient.Jobs().Register(jobV2, nil)
+	if err != nil {
+		t.Fatalf("Failed to deploy job v2: %v", err)
+	}
+	t.Log("Deployed job version 2")
+
+	// Sync version 2
+	spec, err = nomadClient.FetchJobSpec("default", "rollback-test")
+	if err != nil {
+		t.Fatalf("Failed to fetch job v2: %v", err)
+	}
+
+	normalized = nomad.NormalizeJob(spec, cfg.Changes.IgnoreFields)
+	hclBytes, err = hcl.FormatJobAsHCL(normalized)
+	if err != nil {
+		t.Fatalf("Failed to format HCL v2: %v", err)
+	}
+
+	if err := backend.WriteFile("default/rollback-test.hcl", hclBytes); err != nil {
+		t.Fatalf("Failed to write file v2: %v", err)
+	}
+
+	commitV2, err := backend.Commit("Update rollback-test\n\nDeployed version 2")
+	if err != nil {
+		t.Fatalf("Failed to commit v2: %v", err)
+	}
+
+	if err := backend.Push(); err != nil {
+		t.Fatalf("Failed to push v2: %v", err)
+	}
+
+	t.Logf("✅ Committed version 2: %s", commitV2)
+
+	// Now test history retrieval
+	// We need to open the repository to access history
+	// Use the same config to ensure we're accessing the same repo
+	gitClient, err := gitpkg.NewClient(&cfg.Git)
+	if err != nil {
+		t.Fatalf("Failed to create git client: %v", err)
+	}
+	defer gitClient.Close()
+
+	// Open the existing repository (should not re-clone)
+	repoPath := filepath.Join(cfg.Git.LocalPath, cfg.Git.RepoName)
+	repo, err := gitClient.Open(repoPath)
+	if err != nil {
+		t.Fatalf("Failed to open repo: %v", err)
+	}
+
+	// Get history
+	commits, err := repo.GetHistory("default/rollback-test.hcl", 0)
+	if err != nil {
+		t.Fatalf("Failed to get history: %v", err)
+	}
+
+	if len(commits) < 2 {
+		t.Fatalf("Expected at least 2 commits, got %d", len(commits))
+	}
+
+	t.Logf("✅ Found %d commits in history", len(commits))
+
+	// The first commit in history should be v2 (most recent)
+	// The second should be v1
+	firstCommit := commits[0]
+	secondCommit := commits[1]
+
+	t.Logf("Latest commit: %s - %s", firstCommit.Hash, firstCommit.Message)
+	t.Logf("Previous commit: %s - %s", secondCommit.Hash, secondCommit.Message)
+
+	// Get file content from v1 commit
+	v1Content, err := repo.GetFileAtCommit(secondCommit.FullHash, "default/rollback-test.hcl")
+	if err != nil {
+		t.Fatalf("Failed to get file at v1 commit: %v", err)
+	}
+
+	// Parse the HCL (pass Nomad address since ParseHCL makes a request to Nomad)
+	jobFromV1, err := hcl.ParseHCL(v1Content, nomadAddr)
+	if err != nil {
+		t.Fatalf("Failed to parse HCL from v1: %v", err)
+	}
+
+	t.Logf("✅ Retrieved version 1 from commit %s", secondCommit.Hash)
+
+	// Deploy v1 (rollback)
+	evalID, err := nomadClient.DeployJob(jobFromV1)
+	if err != nil {
+		t.Fatalf("Failed to deploy v1: %v", err)
+	}
+
+	t.Logf("✅ Deployed version 1 (rollback), evaluation: %s", evalID)
+
+	// Verify the job was actually deployed
+	deployedJob, _, err := apiClient.Jobs().Info("rollback-test", nil)
+	if err != nil {
+		t.Fatalf("Failed to get deployed job info: %v", err)
+	}
+
+	if deployedJob == nil {
+		t.Fatal("Deployed job is nil")
+	}
+
+	// Check that the job config matches v1 (has "version 1" in args)
+	if len(deployedJob.TaskGroups) > 0 && len(deployedJob.TaskGroups[0].Tasks) > 0 {
+		task := deployedJob.TaskGroups[0].Tasks[0]
+		config, ok := task.Config["args"]
+		if !ok {
+			t.Fatal("Task has no args in config")
+		}
+
+		argsSlice, ok := config.([]interface{})
+		if !ok {
+			t.Fatalf("Args is not a slice: %T", config)
+		}
+
+		argsStr := fmt.Sprintf("%v", argsSlice)
+		if !strings.Contains(argsStr, "version 1") {
+			t.Errorf("Expected version 1 in args, got: %v", argsSlice)
+		} else {
+			t.Log("✅ Verified rollback successful - job has version 1 config")
+		}
+	}
+
+	t.Log("✅ History and deploy (rollback) workflow complete!")
 }
