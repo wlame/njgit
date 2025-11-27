@@ -7,10 +7,10 @@ import (
 
 	"github.com/hashicorp/nomad/api"
 	"github.com/spf13/cobra"
-	"github.com/wlame/nomad-changelog/internal/backend"
-	"github.com/wlame/nomad-changelog/internal/config"
-	"github.com/wlame/nomad-changelog/internal/hcl"
-	"github.com/wlame/nomad-changelog/internal/nomad"
+	"github.com/wlame/ndiff/internal/backend"
+	"github.com/wlame/ndiff/internal/config"
+	"github.com/wlame/ndiff/internal/hcl"
+	"github.com/wlame/ndiff/internal/nomad"
 )
 
 var (
@@ -38,16 +38,16 @@ Each changed job gets its own commit with a detailed message showing what change
 
 Examples:
   # Sync all configured jobs
-  nomad-changelog sync
+  ndiff sync
 
   # Sync specific jobs only
-  nomad-changelog sync --jobs web-server,api-server
+  ndiff sync --jobs web-server,api-server
 
   # Dry run (show what would change without committing)
-  nomad-changelog sync --dry-run
+  ndiff sync --dry-run
 
   # Commit locally but don't push to remote
-  nomad-changelog sync --no-push`,
+  ndiff sync --no-push`,
 	RunE: syncRun,
 }
 

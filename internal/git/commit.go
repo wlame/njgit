@@ -62,7 +62,7 @@ func (r *Repository) StageAll() error {
 //
 // Parameters:
 //   - message: Commit message
-//   - author: Author name (e.g., "nomad-changelog")
+//   - author: Author name (e.g., "ndiff")
 //   - email: Author email (e.g., "bot@example.com")
 //
 // Returns:

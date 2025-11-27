@@ -1,4 +1,4 @@
-module github.com/wlame/nomad-changelog
+module github.com/wlame/ndiff
 
 go 1.25.4
 

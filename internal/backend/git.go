@@ -1,4 +1,4 @@
-// Package backend provides storage backend implementations for nomad-changelog
+// Package backend provides storage backend implementations for ndiff
 package backend
 
 import (
@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wlame/nomad-changelog/internal/config"
-	gitpkg "github.com/wlame/nomad-changelog/internal/git"
+	"github.com/wlame/ndiff/internal/config"
+	gitpkg "github.com/wlame/ndiff/internal/git"
 )
 
 // GitBackend implements the Backend interface using a local Git repository
@@ -22,7 +22,7 @@ type GitBackend struct {
 	config      *config.GitConfig
 	client      *gitpkg.Client
 	repository  *gitpkg.Repository
-	localPath   string   // Full path to local repo (e.g., "./nomad-changelog-repo")
+	localPath   string   // Full path to local repo (e.g., "./ndiff-repo")
 	stagedFiles []string // Files staged for commit
 }
 
@@ -47,7 +47,7 @@ func NewGitBackend(cfg *config.GitConfig) (*GitBackend, error) {
 
 	// Determine full local path where the repo will be stored
 	// LocalPath defaults to "." (current directory)
-	// RepoName defaults to "nomad-changelog-repo"
+	// RepoName defaults to "ndiff-repo"
 	localPath := filepath.Join(cfg.LocalPath, cfg.RepoName)
 
 	return &GitBackend{

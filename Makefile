@@ -1,8 +1,8 @@
-# Makefile for nomad-changelog
+# Makefile for ndiff
 
 # Variables
-BINARY_NAME=nomad-changelog
-MAIN_PATH=./cmd/nomad-changelog
+BINARY_NAME=ndiff
+MAIN_PATH=./cmd/ndiff
 BUILD_DIR=.
 GO=go
 
@@ -12,9 +12,9 @@ COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME?=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 
 # Go build flags
-LDFLAGS=-ldflags "-X github.com/wlame/nomad-changelog/pkg/version.Version=$(VERSION) \
-	-X github.com/wlame/nomad-changelog/pkg/version.Commit=$(COMMIT) \
-	-X github.com/wlame/nomad-changelog/pkg/version.BuildTime=$(BUILD_TIME)"
+LDFLAGS=-ldflags "-X github.com/wlame/ndiff/pkg/version.Version=$(VERSION) \
+	-X github.com/wlame/ndiff/pkg/version.Commit=$(COMMIT) \
+	-X github.com/wlame/ndiff/pkg/version.BuildTime=$(BUILD_TIME)"
 
 .PHONY: all build install clean test deps run help
 

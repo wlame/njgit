@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/nomad-changelog/internal/config"
-	"github.com/wlame/nomad-changelog/internal/hcl"
-	"github.com/wlame/nomad-changelog/internal/nomad"
+	"github.com/wlame/ndiff/internal/config"
+	"github.com/wlame/ndiff/internal/hcl"
+	"github.com/wlame/ndiff/internal/nomad"
 )
 
 var (
@@ -31,10 +31,10 @@ This is a development/testing command to verify:
 
 Example:
   # Fetch a job named "example" from the "default" namespace
-  nomad-changelog test-fetch --job example --namespace default
+  ndiff test-fetch --job example --namespace default
 
   # With custom config
-  nomad-changelog test-fetch --job example --config ./my-config.toml`,
+  ndiff test-fetch --job example --config ./my-config.toml`,
 	RunE: testFetchRun,
 }
 

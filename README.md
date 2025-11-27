@@ -1,4 +1,4 @@
-# Nomad Changelog
+# ndiff
 
 A stateless CLI tool written in Go that tracks Nomad job configuration changes by syncing them to a Git repository, providing version history and rollback capabilities.
 
@@ -26,7 +26,7 @@ go version
 
 ```bash
 # Initialize the Go module (first time only)
-go mod init github.com/wlame/nomad-changelog
+go mod init github.com/wlame/ndiff
 
 # Install dependencies
 go get github.com/spf13/cobra@latest
@@ -36,20 +36,20 @@ go get github.com/go-git/go-git/v5@latest
 go get github.com/hashicorp/hcl/v2@latest
 
 # Build the binary for your current platform
-go build -o nomad-changelog ./cmd/nomad-changelog
+go build -o ndiff ./cmd/ndiff
 
 # Or use the build script to create binaries for all platforms
 ./build.sh
 
 # This creates binaries in the dist/ directory:
-# - dist/nomad-changelog-linux-amd64
-# - dist/nomad-changelog-linux-arm64
-# - dist/nomad-changelog-darwin-amd64 (macOS Intel)
-# - dist/nomad-changelog-darwin-arm64 (macOS Apple Silicon)
-# - dist/nomad-changelog-windows-amd64.exe
+# - dist/ndiff-linux-amd64
+# - dist/ndiff-linux-arm64
+# - dist/ndiff-darwin-amd64 (macOS Intel)
+# - dist/ndiff-darwin-arm64 (macOS Apple Silicon)
+# - dist/ndiff-windows-amd64.exe
 
 # Run it
-./nomad-changelog --help
+./ndiff --help
 ```
 
 ### Cross-Compilation
@@ -58,22 +58,22 @@ To build for a specific platform:
 
 ```bash
 # Linux (64-bit)
-GOOS=linux GOARCH=amd64 go build -o nomad-changelog-linux ./cmd/nomad-changelog
+GOOS=linux GOARCH=amd64 go build -o ndiff-linux ./cmd/ndiff
 
 # macOS (Intel)
-GOOS=darwin GOARCH=amd64 go build -o nomad-changelog-darwin ./cmd/nomad-changelog
+GOOS=darwin GOARCH=amd64 go build -o ndiff-darwin ./cmd/ndiff
 
 # Windows
-GOOS=windows GOARCH=amd64 go build -o nomad-changelog.exe ./cmd/nomad-changelog
+GOOS=windows GOARCH=amd64 go build -o ndiff.exe ./cmd/ndiff
 ```
 
 ## Configuration
 
-nomad-changelog supports two storage backends: **Git** (default) and **GitHub API**. See [Backend Configuration Guide](docs/BACKENDS.md) for detailed information.
+ndiff supports two storage backends: **Git** (default) and **GitHub API**. See [Backend Configuration Guide](docs/BACKENDS.md) for detailed information.
 
 ### Basic Configuration
 
-Create a `nomad-changelog.toml` file in your project directory:
+Create a `ndiff.toml` file in your project directory:
 
 ```toml
 # Git repository configuration
@@ -82,7 +82,7 @@ backend = "git"  # Options: "git" (default), "github-api"
 url = "git@github.com:myorg/nomad-jobs.git"
 branch = "main"
 auth_method = "ssh"  # or "token" or "auto"
-author_name = "nomad-changelog"
+author_name = "ndiff"
 author_email = "bot@example.com"
 
 # Nomad configuration
@@ -112,7 +112,7 @@ backend = "git"
 url = "git@github.com:myorg/nomad-jobs.git"
 branch = "main"
 local_path = "."  # Where to store the local repository
-repo_name = "nomad-changelog-repo"  # Repository directory name
+repo_name = "ndiff-repo"  # Repository directory name
 ```
 
 #### Git Backend (Local-Only Mode)
@@ -133,7 +133,7 @@ branch = "main"
 # Initialize the repository yourself
 git init -b main /home/user/repos/nomad-jobs
 cd /home/user/repos/nomad-jobs
-git config user.name "nomad-changelog"
+git config user.name "ndiff"
 git config user.email "bot@example.com"
 
 # Optional: Add a remote (you'll push manually)
@@ -170,69 +170,69 @@ After downloading the binary, run these commands to get started:
 
 ```bash
 # 1. Create configuration (interactive wizard)
-nomad-changelog init
+ndiff init
 
 # 2. Verify everything is set up correctly
-nomad-changelog config check
+ndiff config check
 
 # 3. Preview what would be synced
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 
 # 4. Start syncing your jobs
-nomad-changelog sync
+ndiff sync
 ```
 
 ### Common Commands
 
 ```bash
 # Sync all configured jobs
-nomad-changelog sync
+ndiff sync
 
 # Sync specific jobs only
-nomad-changelog sync --jobs web-app,api-server
+ndiff sync --jobs web-app,api-server
 
 # Preview changes without committing
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 
 # Commit locally but don't push
-nomad-changelog sync --no-push
+ndiff sync --no-push
 
 # View version history for all jobs
-nomad-changelog history
+ndiff history
 
 # View history for a specific job
-nomad-changelog history --job web-app --namespace production
+ndiff history --job web-app --namespace production
 
 # Show detailed commit information with files changed
-nomad-changelog history --verbose
+ndiff history --verbose
 
 # Display a specific version of a job
-nomad-changelog show <commit-hash> <job-name>
+ndiff show <commit-hash> <job-name>
 
 # Display a specific version with namespace
-nomad-changelog show <commit-hash> <job-name> --namespace production
+ndiff show <commit-hash> <job-name> --namespace production
 
 # Deploy (rollback to) a previous version
-nomad-changelog deploy <commit-hash> <job-name>
+ndiff deploy <commit-hash> <job-name>
 
 # Preview deployment without actually deploying
-nomad-changelog deploy <commit-hash> <job-name> --dry-run
+ndiff deploy <commit-hash> <job-name> --dry-run
 
 # Check configuration and test connections
-nomad-changelog config check
+ndiff config check
 
 # Show current configuration
-nomad-changelog config show
+ndiff config show
 
 # Validate configuration file
-nomad-changelog config validate
+ndiff config validate
 ```
 
 For complete CLI documentation with all scenarios, see [CLI Usage Guide](docs/CLI_GUIDE.md).
 
 ## Version History and Rollback
 
-nomad-changelog tracks all job configuration changes in Git, allowing you to view history and rollback to previous versions.
+ndiff tracks all job configuration changes in Git, allowing you to view history and rollback to previous versions.
 
 ### View History
 
@@ -240,28 +240,28 @@ The `history` command shows all commits with job configuration changes:
 
 ```bash
 # View all history
-nomad-changelog history
+ndiff history
 
 # Filter by job name
-nomad-changelog history --job web-app
+ndiff history --job web-app
 
 # Filter by namespace
-nomad-changelog history --namespace production
+ndiff history --namespace production
 
 # Filter by both
-nomad-changelog history --job web-app --namespace production
+ndiff history --job web-app --namespace production
 
 # Show detailed information including files changed
-nomad-changelog history --verbose
+ndiff history --verbose
 
 # Limit number of commits shown
-nomad-changelog history --max-count 10
+ndiff history --max-count 10
 ```
 
 **Example output:**
 ```
 commit a1b2c3d4
-Author: nomad-changelog <bot@example.com>
+Author: ndiff <bot@example.com>
 Date:   2 hours ago
 
     Update job: web-app (namespace: production)
@@ -272,7 +272,7 @@ Date:   2 hours ago
 ─────────────────────────────────────────────────────
 
 commit e5f6g7h8
-Author: nomad-changelog <bot@example.com>
+Author: ndiff <bot@example.com>
 Date:   1 day ago
 
     Update job: api-server (namespace: production)
@@ -286,10 +286,10 @@ The `show` command displays the job configuration from a specific commit:
 
 ```bash
 # Show a specific version
-nomad-changelog show a1b2c3d4 web-app
+ndiff show a1b2c3d4 web-app
 
 # Specify namespace if needed
-nomad-changelog show a1b2c3d4 web-app --namespace production
+ndiff show a1b2c3d4 web-app --namespace production
 ```
 
 **For Git backend**: Displays the HCL content from that commit
@@ -301,13 +301,13 @@ The `deploy` command redeploys a job from a previous commit:
 
 ```bash
 # Deploy a previous version
-nomad-changelog deploy a1b2c3d4 web-app
+ndiff deploy a1b2c3d4 web-app
 
 # Specify namespace
-nomad-changelog deploy a1b2c3d4 web-app --namespace production
+ndiff deploy a1b2c3d4 web-app --namespace production
 
 # Preview without actually deploying
-nomad-changelog deploy a1b2c3d4 web-app --dry-run
+ndiff deploy a1b2c3d4 web-app --dry-run
 ```
 
 **What happens during rollback:**
@@ -319,13 +319,13 @@ nomad-changelog deploy a1b2c3d4 web-app --dry-run
 **Example workflow:**
 ```bash
 # 1. View history to find the version you want
-nomad-changelog history --job web-app
+ndiff history --job web-app
 
 # 2. Show the specific version to verify it's correct
-nomad-changelog show a1b2c3d4 web-app
+ndiff show a1b2c3d4 web-app
 
 # 3. Deploy it
-nomad-changelog deploy a1b2c3d4 web-app
+ndiff deploy a1b2c3d4 web-app
 
 # Output:
 # ✅ Successfully deployed job web-app from commit a1b2c3d4
@@ -370,9 +370,9 @@ For detailed backend configuration, see [Backend Configuration Guide](docs/BACKE
 ## Project Structure
 
 ```
-nomad-changelog/
+ndiff/
 ├── cmd/
-│   └── nomad-changelog/
+│   └── ndiff/
 │       └── main.go              # Entry point
 ├── internal/
 │   ├── backend/                 # Storage backends (Git, GitHub API)

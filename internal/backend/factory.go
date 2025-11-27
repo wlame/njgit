@@ -3,7 +3,7 @@ package backend
 import (
 	"fmt"
 
-	"github.com/wlame/nomad-changelog/internal/config"
+	"github.com/wlame/ndiff/internal/config"
 )
 
 // NewBackend creates a new backend based on the configuration.

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/nomad-changelog/internal/config"
-	gitpkg "github.com/wlame/nomad-changelog/internal/git"
+	"github.com/wlame/ndiff/internal/config"
+	gitpkg "github.com/wlame/ndiff/internal/git"
 )
 
 var (
@@ -32,16 +32,16 @@ You can filter by job name/namespace or show all changes.
 
 Examples:
   # Show all history
-  nomad-changelog history
+  ndiff history
 
   # Show last 10 commits
-  nomad-changelog history --limit 10
+  ndiff history --limit 10
 
   # Show history for specific job
-  nomad-changelog history --job web-app --namespace default
+  ndiff history --job web-app --namespace default
 
   # Verbose output with file names
-  nomad-changelog history --verbose`,
+  ndiff history --verbose`,
 	RunE: historyRun,
 }
 
@@ -117,7 +117,7 @@ func showGitHistory(cfg *config.Config) error {
 		} else {
 			PrintWarning("No commits found in repository")
 			fmt.Println()
-			fmt.Println("💡 Tip: Run 'nomad-changelog sync' to start tracking changes")
+			fmt.Println("💡 Tip: Run 'ndiff sync' to start tracking changes")
 		}
 		return nil
 	}
@@ -169,10 +169,10 @@ func showGitHistory(cfg *config.Config) error {
 
 	// Show next steps
 	fmt.Println("💡 Next steps:")
-	fmt.Println("  • View a specific version: nomad-changelog show <commit-hash>")
-	fmt.Println("  • Deploy a previous version: nomad-changelog deploy <commit-hash> <job>")
+	fmt.Println("  • View a specific version: ndiff show <commit-hash>")
+	fmt.Println("  • Deploy a previous version: ndiff deploy <commit-hash> <job>")
 	if !IsVerbose() {
-		fmt.Println("  • Show changed files: nomad-changelog history --verbose")
+		fmt.Println("  • Show changed files: ndiff history --verbose")
 	}
 	fmt.Println()
 
@@ -214,8 +214,8 @@ func showGitHubHistory(cfg *config.Config) error {
 	fmt.Println("💡 Using GitHub API backend:")
 	fmt.Println("  • History is stored on GitHub")
 	fmt.Println("  • Click the link above to view commits in your browser")
-	fmt.Println("  • Use 'nomad-changelog show <commit-hash>' to view specific versions")
-	fmt.Println("  • Use 'nomad-changelog deploy <commit-hash> <job>' to rollback")
+	fmt.Println("  • Use 'ndiff show <commit-hash>' to view specific versions")
+	fmt.Println("  • Use 'ndiff deploy <commit-hash> <job>' to rollback")
 	fmt.Println()
 
 	return nil

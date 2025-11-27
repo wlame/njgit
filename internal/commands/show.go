@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/nomad-changelog/internal/config"
-	gitpkg "github.com/wlame/nomad-changelog/internal/git"
+	"github.com/wlame/ndiff/internal/config"
+	gitpkg "github.com/wlame/ndiff/internal/git"
 )
 
 var (
@@ -31,13 +31,13 @@ For GitHub API backend: Opens the commit view on GitHub
 
 Examples:
   # Show a specific commit (interactive job selection)
-  nomad-changelog show a1b2c3d4
+  ndiff show a1b2c3d4
 
   # Show specific job at a commit
-  nomad-changelog show a1b2c3d4 --job web-app --namespace default
+  ndiff show a1b2c3d4 --job web-app --namespace default
 
   # View on GitHub (if using GitHub API backend)
-  nomad-changelog show a1b2c3d4`,
+  ndiff show a1b2c3d4`,
 	Args: cobra.ExactArgs(1),
 	RunE: showRun,
 }
@@ -157,7 +157,7 @@ func showGitCommit(cfg *config.Config, commitHash string) error {
 				job := filepath.Base(file)
 				job = job[:len(job)-4] // Remove .hcl extension
 
-				fmt.Printf("  nomad-changelog show %s --job %s --namespace %s\n", commitHash, job, namespace)
+				fmt.Printf("  ndiff show %s --job %s --namespace %s\n", commitHash, job, namespace)
 			}
 			return nil
 		}
@@ -190,7 +190,7 @@ func showGitCommit(cfg *config.Config, commitHash string) error {
 	job := filepath.Base(filePath)
 	job = job[:len(job)-4] // Remove .hcl extension
 
-	fmt.Printf("  nomad-changelog deploy %s %s --namespace %s\n", commitHash, job, namespace)
+	fmt.Printf("  ndiff deploy %s %s --namespace %s\n", commitHash, job, namespace)
 	fmt.Println()
 
 	return nil
@@ -229,9 +229,9 @@ func showGitHubCommit(cfg *config.Config, commitHash string) error {
 	fmt.Println()
 	fmt.Println("💡 To deploy this version:")
 	if showJob != "" {
-		fmt.Printf("  nomad-changelog deploy %s %s --namespace %s\n", commitHash, showJob, showNamespace)
+		fmt.Printf("  ndiff deploy %s %s --namespace %s\n", commitHash, showJob, showNamespace)
 	} else {
-		fmt.Println("  nomad-changelog deploy <commit> <job> --namespace <namespace>")
+		fmt.Println("  ndiff deploy <commit> <job> --namespace <namespace>")
 	}
 	fmt.Println()
 

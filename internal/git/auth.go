@@ -10,7 +10,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/wlame/nomad-changelog/internal/config"
+	"github.com/wlame/ndiff/internal/config"
 )
 
 // ResolveAuth determines the appropriate Git authentication method
@@ -159,7 +159,7 @@ func ResolveTokenAuth(cfg *config.GitConfig) (transport.AuthMethod, error) {
 	// Username can be anything non-empty; the token goes in the password field
 	// This is how GitHub's API authentication works with tokens
 	return &http.BasicAuth{
-		Username: "nomad-changelog", // Can be any non-empty string
+		Username: "ndiff", // Can be any non-empty string
 		Password: token,
 	}, nil
 }

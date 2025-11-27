@@ -1,4 +1,4 @@
-// Package config handles loading and managing configuration for nomad-changelog.
+// Package config handles loading and managing configuration for ndiff.
 // It uses Viper to support multiple configuration sources: files, environment variables, and CLI flags.
 package config
 
@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config is the main configuration structure for nomad-changelog
+// Config is the main configuration structure for ndiff
 // It maps directly to the TOML configuration file structure
 type Config struct {
 	// Git contains all Git repository related configuration
@@ -60,7 +60,7 @@ type GitConfig struct {
 	LocalPath string `mapstructure:"local_path"`
 
 	// RepoName is the name of the repository directory
-	// Default: "nomad-changelog-repo"
+	// Default: "ndiff-repo"
 	// Used by: git backend
 	RepoName string `mapstructure:"repo_name"`
 
@@ -152,7 +152,7 @@ type ChangesConfig struct {
 //
 // Parameters:
 //   - configPath: Path to the configuration file. If empty, will look for
-//     "nomad-changelog.toml" in the current directory
+//     "ndiff.toml" in the current directory
 //
 // Returns:
 //   - *Config: The loaded configuration
@@ -168,7 +168,7 @@ func Load(configPath string) (*Config, error) {
 		v.SetConfigFile(configPath)
 	} else {
 		// Look for config file in current directory
-		v.SetConfigName("nomad-changelog") // Name of config file (without extension)
+		v.SetConfigName("ndiff") // Name of config file (without extension)
 		v.SetConfigType("toml")            // Config file format
 		v.AddConfigPath(".")               // Look in current directory
 	}
@@ -220,10 +220,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("git.backend", "git")
 	v.SetDefault("git.branch", "main")
 	v.SetDefault("git.auth_method", "auto")
-	v.SetDefault("git.author_name", "nomad-changelog")
-	v.SetDefault("git.author_email", "nomad-changelog@localhost")
+	v.SetDefault("git.author_name", "ndiff")
+	v.SetDefault("git.author_email", "ndiff@localhost")
 	v.SetDefault("git.local_path", ".") // Current directory
-	v.SetDefault("git.repo_name", "nomad-changelog-repo")
+	v.SetDefault("git.repo_name", "ndiff-repo")
 	v.SetDefault("git.local_only", false)
 
 	// Nomad defaults

@@ -4,7 +4,8 @@
 *.dll
 *.so
 *.dylib
-nomad-changelog
+ndiff
+dist/
 
 # Test binary, built with `go test -c`
 *.test
@@ -19,7 +20,7 @@ go.work
 vendor/
 
 # Configuration files (may contain secrets)
-nomad-changelog.toml
+ndiff.toml
 *.local.toml
 
 # IDE

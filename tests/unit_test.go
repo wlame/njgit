@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/nomad/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wlame/nomad-changelog/internal/hcl"
-	"github.com/wlame/nomad-changelog/internal/nomad"
+	"github.com/wlame/ndiff/internal/hcl"
+	"github.com/wlame/ndiff/internal/nomad"
 )
 
 // TestJobNormalization tests that job normalization removes metadata fields

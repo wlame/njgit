@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/nomad-changelog/internal/config"
-	gitpkg "github.com/wlame/nomad-changelog/internal/git"
-	"github.com/wlame/nomad-changelog/internal/hcl"
-	"github.com/wlame/nomad-changelog/internal/nomad"
+	"github.com/wlame/ndiff/internal/config"
+	gitpkg "github.com/wlame/ndiff/internal/git"
+	"github.com/wlame/ndiff/internal/hcl"
+	"github.com/wlame/ndiff/internal/nomad"
 )
 
 var (
@@ -18,7 +18,7 @@ var (
 
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
-	Use:   "deploy <commit-hash> <job-name> [flags]",
+	Use:   "deploy <commit-hash> [job-name] [flags]",
 	Short: "Deploy a specific version of a job to Nomad",
 	Long: `Deploy a job configuration from a specific commit to your Nomad cluster.
 
@@ -32,24 +32,30 @@ The command will:
   2. Parse the HCL configuration
   3. Submit it to Nomad for deployment
 
+If job-name is not provided, it will be automatically detected from the files
+changed in the commit. This works when the commit only affects a single job.
+
 IMPORTANT: This will deploy the exact configuration from that commit,
 potentially overwriting current job settings.
 
 Examples:
-  # Deploy a previous version
-  nomad-changelog deploy a1b2c3d4 web-app
+  # Deploy with auto-detected job name (typical usage)
+  ndiff deploy a1b2c3d4
+
+  # Deploy a specific job (useful if commit was made manually with multiple jobs)
+  ndiff deploy a1b2c3d4 web-app
 
   # Deploy with specific namespace
-  nomad-changelog deploy a1b2c3d4 web-app --namespace production
+  ndiff deploy a1b2c3d4 web-app --namespace production
 
   # Preview what would be deployed (dry run)
-  nomad-changelog deploy a1b2c3d4 web-app --dry-run
+  ndiff deploy a1b2c3d4 --dry-run
 
 Workflow:
-  1. Find the commit: nomad-changelog history
-  2. Review the version: nomad-changelog show <commit>
-  3. Deploy it: nomad-changelog deploy <commit> <job>`,
-	Args: cobra.ExactArgs(2),
+  1. Find the commit: ndiff history
+  2. Review the version: ndiff show <commit>
+  3. Deploy it: ndiff deploy <commit>`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: deployRun,
 }
 
@@ -62,7 +68,12 @@ func init() {
 
 func deployRun(cmd *cobra.Command, args []string) error {
 	commitHash := args[0]
-	jobName := args[1]
+	var jobName string
+
+	// Job name can be provided or auto-detected
+	if len(args) >= 2 {
+		jobName = args[1]
+	}
 
 	if deployNamespace == "" {
 		deployNamespace = "default"
@@ -72,6 +83,17 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	cfg, err := config.Load(GetConfigFile())
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Auto-detect job name if not provided
+	if jobName == "" {
+		PrintInfo(fmt.Sprintf("Auto-detecting job name from commit %s...", commitHash))
+		detectedJob, err := detectJobFromCommit(cfg, commitHash, deployNamespace)
+		if err != nil {
+			return err
+		}
+		jobName = detectedJob
+		PrintInfo(fmt.Sprintf("Detected job: %s", jobName))
 	}
 
 	// Get job HCL from the commit
@@ -158,6 +180,102 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (string, error) {
+	// Check backend type
+	backendType := cfg.Git.Backend
+	if backendType == "" {
+		backendType = "git"
+	}
+
+	if backendType != "git" {
+		return "", fmt.Errorf("auto-detection only supports git backend\n\n"+
+			"Please specify job name explicitly:\n"+
+			"  ndiff deploy %s <job-name>", commitHash)
+	}
+
+	// Create Git client
+	gitClient, err := gitpkg.NewClient(&cfg.Git)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Git client: %w", err)
+	}
+	defer gitClient.Close()
+
+	// Open repository
+	repo, err := gitClient.OpenOrClone()
+	if err != nil {
+		return "", fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	// Get commits to find full hash and commit info
+	commits, err := repo.GetHistory("", 0)
+	if err != nil {
+		return "", fmt.Errorf("failed to get history: %w", err)
+	}
+
+	// Find the commit
+	var commitInfo *gitpkg.CommitInfo
+	for i := range commits {
+		if commits[i].Hash == commitHash || commits[i].FullHash == commitHash {
+			commitInfo = &commits[i]
+			break
+		}
+	}
+
+	if commitInfo == nil {
+		return "", fmt.Errorf("commit %s not found", commitHash)
+	}
+
+	// Extract job names from changed files
+	// Files follow pattern: <namespace>/<job-name>.hcl
+	jobNames := make(map[string]bool)
+	for _, file := range commitInfo.Files {
+		// Parse the file path
+		dir := filepath.Dir(file)
+		base := filepath.Base(file)
+
+		// Check if it's in the target namespace
+		if dir != namespace {
+			continue
+		}
+
+		// Extract job name (remove .hcl extension)
+		if filepath.Ext(base) == ".hcl" {
+			jobName := base[:len(base)-4]
+			jobNames[jobName] = true
+		}
+	}
+
+	// Check how many unique jobs we found
+	if len(jobNames) == 0 {
+		return "", fmt.Errorf("no job files found in namespace '%s' for commit %s\n\n"+
+			"Changed files:\n"+
+			"%v\n\n"+
+			"Please specify job name explicitly:\n"+
+			"  ndiff deploy %s <job-name>",
+			namespace, commitHash, commitInfo.Files, commitHash)
+	}
+
+	if len(jobNames) > 1 {
+		// Convert map to slice for display
+		jobs := make([]string, 0, len(jobNames))
+		for job := range jobNames {
+			jobs = append(jobs, job)
+		}
+
+		return "", fmt.Errorf("commit affects multiple jobs: %v\n\n"+
+			"Please specify which job to deploy:\n"+
+			"  ndiff deploy %s <job-name>",
+			jobs, commitHash)
+	}
+
+	// Return the single job name
+	for jobName := range jobNames {
+		return jobName, nil
+	}
+
+	return "", fmt.Errorf("unexpected error detecting job name")
+}
+
 func getJobFromCommit(cfg *config.Config, commitHash, namespace, jobName string) ([]byte, error) {
 	// Check backend type
 	backendType := cfg.Git.Backend
@@ -168,7 +286,7 @@ func getJobFromCommit(cfg *config.Config, commitHash, namespace, jobName string)
 	if backendType != "git" {
 		return nil, fmt.Errorf("deploy command currently only supports git backend\n\n"+
 			"For GitHub API backend:\n"+
-			"  1. View the file on GitHub: nomad-changelog show %s --job %s\n"+
+			"  1. View the file on GitHub: ndiff show %s --job %s\n"+
 			"  2. Copy the job specification\n"+
 			"  3. Deploy manually: nomad job run <file>", commitHash, jobName)
 	}

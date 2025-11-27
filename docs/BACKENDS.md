@@ -1,6 +1,6 @@
 # Backend Configuration Guide
 
-nomad-changelog supports two different storage backends for tracking Nomad job configurations. This guide explains both backends and helps you choose the right one for your use case.
+ndiff supports two different storage backends for tracking Nomad job configurations. This guide explains both backends and helps you choose the right one for your use case.
 
 ## Table of Contents
 
@@ -12,7 +12,7 @@ nomad-changelog supports two different storage backends for tracking Nomad job c
 
 ## Overview
 
-A **backend** is how nomad-changelog stores and tracks changes to your Nomad job configurations. Think of it as the "database" where your job history is saved.
+A **backend** is how ndiff stores and tracks changes to your Nomad job configurations. Think of it as the "database" where your job history is saved.
 
 ### Available Backends
 
@@ -82,9 +82,9 @@ branch = "main"
 auth_method = "ssh"  # Options: "ssh", "token", "auto" (default: "auto")
 ssh_key_path = "/home/user/.ssh/id_ed25519"  # Optional - auto-detected if not specified
 local_path = "."  # Directory where repo is stored (default: current directory)
-repo_name = "nomad-changelog-repo"  # Repository directory name (default: "nomad-changelog-repo")
-author_name = "nomad-changelog"
-author_email = "nomad-changelog@localhost"
+repo_name = "ndiff-repo"  # Repository directory name (default: "ndiff-repo")
+author_name = "ndiff"
+author_email = "ndiff@localhost"
 ```
 
 ### Authentication Methods
@@ -186,7 +186,7 @@ local_only = true  # Enable local-only mode
 local_path = "/home/user/repositories"  # Directory containing the repository
 repo_name = "nomad-jobs"  # Repository directory name
 branch = "main"
-author_name = "nomad-changelog"
+author_name = "ndiff"
 author_email = "bot@example.com"
 ```
 
@@ -206,7 +206,7 @@ author_email = "bot@example.com"
 
 #### 1. Initialize the Repository
 
-You must initialize the Git repository yourself before using nomad-changelog:
+You must initialize the Git repository yourself before using ndiff:
 
 ```bash
 # Create and initialize the repository
@@ -215,7 +215,7 @@ git init -b main nomad-jobs
 cd nomad-jobs
 
 # Configure Git user (required for commits)
-git config user.name "nomad-changelog"
+git config user.name "ndiff"
 git config user.email "bot@example.com"
 ```
 
@@ -227,7 +227,7 @@ If you want to push changes manually later, configure a remote:
 git remote add origin git@github.com:myorg/nomad-jobs.git
 ```
 
-#### 3. Configure nomad-changelog
+#### 3. Configure ndiff
 
 Create your config with `local_only = true`:
 
@@ -238,14 +238,14 @@ local_only = true
 local_path = "/home/user/repositories"
 repo_name = "nomad-jobs"
 branch = "main"
-author_name = "nomad-changelog"
+author_name = "ndiff"
 author_email = "bot@example.com"
 ```
 
 #### 4. Run Sync
 
 ```bash
-nomad-changelog sync
+ndiff sync
 ```
 
 The tool will commit changes locally. You can push manually whenever you want:
@@ -263,7 +263,7 @@ Perfect for developers who want to review commits before pushing:
 
 ```bash
 # Sync changes (commits locally)
-nomad-changelog sync
+ndiff sync
 
 # Review commits
 cd /home/user/repositories/nomad-jobs
@@ -282,7 +282,7 @@ For environments without internet access to remote Git servers:
 
 ```bash
 # On isolated system - sync creates local commits
-nomad-changelog sync
+ndiff sync
 
 # Bundle changes for transfer to another system
 cd /home/user/repositories/nomad-jobs
@@ -305,11 +305,11 @@ cd /tmp/test-repo
 git config user.name "test"
 git config user.email "test@test.com"
 
-# Configure nomad-changelog to use test repo
+# Configure ndiff to use test repo
 # (edit config to point to /tmp/test-repo)
 
 # Experiment freely
-nomad-changelog sync
+ndiff sync
 
 # Inspect results
 git log --oneline
@@ -404,8 +404,8 @@ backend = "github-api"
 owner = "myorg"  # GitHub organization or username
 repo = "nomad-jobs"  # Repository name
 branch = "main"
-author_name = "nomad-changelog"  # Optional - used in commits
-author_email = "nomad-changelog@localhost"  # Optional - used in commits
+author_name = "ndiff"  # Optional - used in commits
+author_email = "ndiff@localhost"  # Optional - used in commits
 
 # Token via environment variable (recommended):
 # export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
@@ -419,7 +419,7 @@ The GitHub API backend **requires** a GitHub Personal Access Token (PAT).
 
 1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
 2. Click "Generate new token (classic)"
-3. Give it a descriptive name (e.g., "nomad-changelog")
+3. Give it a descriptive name (e.g., "ndiff")
 4. Select scopes:
    - `repo` (Full control of private repositories)
    - Or `public_repo` (for public repositories only)
@@ -432,7 +432,7 @@ The GitHub API backend **requires** a GitHub Personal Access Token (PAT).
 
 ```bash
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
-nomad-changelog sync
+ndiff sync
 ```
 
 **Option 2: Config File (Not Recommended)**
@@ -524,7 +524,7 @@ repo_name = "nomad-jobs-repo"
 
 **Usage**:
 ```bash
-nomad-changelog sync
+ndiff sync
 # Repository cloned to: /home/user/nomad-sync/nomad-jobs-repo
 # Subsequent runs reuse the same repository
 ```
@@ -539,7 +539,7 @@ backend = "git"
 url = "https://github.com/myorg/nomad-jobs.git"
 branch = "main"
 auth_method = "token"
-local_path = "/tmp/nomad-changelog"
+local_path = "/tmp/ndiff"
 ```
 
 **Jenkins Pipeline**:
@@ -551,7 +551,7 @@ pipeline {
     stages {
         stage('Sync') {
             steps {
-                sh 'nomad-changelog sync'
+                sh 'ndiff sync'
             }
         }
     }
@@ -575,7 +575,7 @@ branch = "main"
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: nomad-changelog-sync
+  name: ndiff-sync
 spec:
   schedule: "0 * * * *"  # Every hour
   jobTemplate:
@@ -583,8 +583,8 @@ spec:
       template:
         spec:
           containers:
-          - name: nomad-changelog
-            image: myorg/nomad-changelog:latest
+          - name: ndiff
+            image: myorg/ndiff:latest
             env:
             - name: GITHUB_TOKEN
               valueFrom:
@@ -593,7 +593,7 @@ spec:
                   key: token
             - name: NOMAD_ADDR
               value: "http://nomad.default.svc.cluster.local:4646"
-            command: ["nomad-changelog", "sync"]
+            command: ["ndiff", "sync"]
           restartPolicy: OnFailure
 ```
 
@@ -612,7 +612,7 @@ auth_method = "token"
 **Set GitLab token**:
 ```bash
 export GITHUB_TOKEN="glpat-xxxxxxxxxxxx"  # GitLab token works with Git backend
-nomad-changelog sync
+ndiff sync
 ```
 
 ## Troubleshooting
@@ -631,7 +631,7 @@ nomad-changelog sync
 **Solution**: The Git backend expected an existing repo but didn't find one. Delete the directory and let it clone fresh:
 ```bash
 rm -rf /path/to/repo-name
-nomad-changelog sync
+ndiff sync
 ```
 
 ### GitHub API Backend Issues
@@ -665,7 +665,7 @@ export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
    - GitHub API backend for ephemeral CI/CD environments
 3. **Repository Persistence**: If using Git backend, be aware it persists the repository locally - plan for disk usage
 4. **CI/CD Credentials**: Use CI/CD secret management (GitHub Secrets, Jenkins Credentials, Kubernetes Secrets)
-5. **Test Configuration**: Use `nomad-changelog config validate` to test your configuration
+5. **Test Configuration**: Use `ndiff config validate` to test your configuration
 
 ## Further Reading
 

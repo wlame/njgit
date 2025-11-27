@@ -8,7 +8,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/wlame/nomad-changelog/internal/config"
+	"github.com/wlame/ndiff/internal/config"
 )
 
 // Client wraps Git operations and provides a high-level interface
@@ -44,7 +44,7 @@ func NewClient(cfg *config.GitConfig) (*Client, error) {
 	// Determine working directory
 	// For stateless operation, we use a temp directory
 	// This ensures we always have a clean state
-	workDir := filepath.Join(os.TempDir(), "nomad-changelog-repo")
+	workDir := filepath.Join(os.TempDir(), "ndiff-repo")
 
 	return &Client{
 		config:  cfg,

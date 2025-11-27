@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wlame/nomad-changelog/internal/config"
+	"github.com/wlame/ndiff/internal/config"
 )
 
 // AuthConfig holds authentication information for Nomad

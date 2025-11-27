@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wlame/nomad-changelog/internal/config"
+	"github.com/wlame/ndiff/internal/config"
 )
 
 // TestNewGitHubBackend_ValidationErrors tests that NewGitHubBackend validates required fields

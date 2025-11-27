@@ -1,6 +1,6 @@
 # CLI Usage Guide
 
-Complete guide to using nomad-changelog from the command line.
+Complete guide to using ndiff from the command line.
 
 ## Table of Contents
 
@@ -14,14 +14,14 @@ Complete guide to using nomad-changelog from the command line.
 
 ### First-Time Setup
 
-When you first download nomad-changelog, follow these steps:
+When you first download ndiff, follow these steps:
 
 #### 1. Initialize Configuration
 
 Run the interactive setup wizard:
 
 ```bash
-nomad-changelog init
+ndiff init
 ```
 
 This will guide you through:
@@ -32,9 +32,9 @@ This will guide you through:
 
 Example session:
 ```
-$ nomad-changelog init
+$ ndiff init
 
-🚀 Welcome to nomad-changelog setup!
+🚀 Welcome to ndiff setup!
 
 This wizard will help you create a configuration file.
 
@@ -56,7 +56,7 @@ Select backend (git/github-api) [git]: git
 Check that everything is set up correctly:
 
 ```bash
-nomad-changelog config check
+ndiff config check
 ```
 
 This performs comprehensive checks:
@@ -69,7 +69,7 @@ This performs comprehensive checks:
 Example output:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 Checking nomad-changelog configuration...
+🔍 Checking ndiff configuration...
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1️⃣  Loading configuration file...
@@ -102,7 +102,7 @@ Example output:
 
    ✅ Passed: 5
 
-✅ All checks passed! You're ready to use nomad-changelog.
+✅ All checks passed! You're ready to use ndiff.
 ```
 
 #### 3. Start Syncing
@@ -111,21 +111,21 @@ Once checks pass, start syncing your jobs:
 
 ```bash
 # Preview what would change (dry run)
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 
 # Actually sync changes
-nomad-changelog sync
+ndiff sync
 ```
 
 ## Command Reference
 
-### `nomad-changelog init`
+### `ndiff init`
 
 Interactive setup wizard for first-time configuration.
 
 **Usage:**
 ```bash
-nomad-changelog init [flags]
+ndiff init [flags]
 ```
 
 **Flags:**
@@ -134,10 +134,10 @@ nomad-changelog init [flags]
 **Examples:**
 ```bash
 # First-time setup
-nomad-changelog init
+ndiff init
 
 # Recreate configuration
-nomad-changelog init --force
+ndiff init --force
 ```
 
 **What it does:**
@@ -145,11 +145,11 @@ nomad-changelog init --force
 2. Collects repository credentials
 3. Configures Nomad connection
 4. Lets you add jobs to track
-5. Creates `nomad-changelog.toml`
+5. Creates `ndiff.toml`
 
 ---
 
-### `nomad-changelog config`
+### `ndiff config`
 
 Manage configuration settings.
 
@@ -159,7 +159,7 @@ Display current configuration with sensitive values redacted.
 
 **Usage:**
 ```bash
-nomad-changelog config show
+ndiff config show
 ```
 
 **Example output:**
@@ -190,12 +190,12 @@ Validate configuration file syntax and required fields.
 
 **Usage:**
 ```bash
-nomad-changelog config validate
+ndiff config validate
 ```
 
 **Example:**
 ```bash
-$ nomad-changelog config validate
+$ ndiff config validate
 ✅ Configuration is valid
 ℹ  Git repository: git@github.com:myorg/nomad-jobs.git
 ℹ  Nomad address: http://localhost:4646
@@ -208,7 +208,7 @@ Comprehensive configuration verification with connectivity tests.
 
 **Usage:**
 ```bash
-nomad-changelog config check
+ndiff config check
 ```
 
 **What it checks:**
@@ -227,13 +227,13 @@ nomad-changelog config check
 
 ---
 
-### `nomad-changelog sync`
+### `ndiff sync`
 
 Sync Nomad job configurations to your repository.
 
 **Usage:**
 ```bash
-nomad-changelog sync [flags]
+ndiff sync [flags]
 ```
 
 **Flags:**
@@ -246,19 +246,19 @@ nomad-changelog sync [flags]
 
 ```bash
 # Sync all configured jobs
-nomad-changelog sync
+ndiff sync
 
 # Preview changes without committing
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 
 # Sync specific jobs only
-nomad-changelog sync --jobs web-app,api-server
+ndiff sync --jobs web-app,api-server
 
 # Commit locally but don't push
-nomad-changelog sync --no-push
+ndiff sync --no-push
 
 # Verbose output
-nomad-changelog sync --verbose
+ndiff sync --verbose
 ```
 
 **How it works:**
@@ -275,7 +275,7 @@ nomad-changelog sync --verbose
 
 **Output:**
 ```bash
-$ nomad-changelog sync
+$ ndiff sync
 
 ℹ  Starting sync...
 ℹ  Loading configuration...
@@ -299,21 +299,21 @@ $ nomad-changelog sync
 
 These flags work with all commands:
 
-- `--config string` - Path to config file (default: nomad-changelog.toml)
+- `--config string` - Path to config file (default: ndiff.toml)
 - `--verbose` - Enable verbose output
 - `--help` - Show help for any command
 
 **Examples:**
 ```bash
 # Use custom config file
-nomad-changelog --config /etc/nomad-changelog.toml sync
+ndiff --config /etc/ndiff.toml sync
 
 # Verbose output
-nomad-changelog --verbose config check
+ndiff --verbose config check
 
 # Get help
-nomad-changelog --help
-nomad-changelog sync --help
+ndiff --help
+ndiff sync --help
 ```
 
 ---
@@ -322,31 +322,31 @@ nomad-changelog sync --help
 
 ### Scenario 1: First-Time Setup (Local Development)
 
-You've just installed nomad-changelog and want to track your Nomad jobs.
+You've just installed ndiff and want to track your Nomad jobs.
 
 ```bash
 # Step 1: Create configuration
-nomad-changelog init
+ndiff init
 # Choose: Git backend
 # Enter: git@github.com:myorg/nomad-jobs.git
 # Auth: ssh
 # Add jobs when prompted
 
 # Step 2: Verify everything works
-nomad-changelog config check
+ndiff config check
 
 # Step 3: Test with dry run
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 
 # Step 4: Start syncing
-nomad-changelog sync
+ndiff sync
 ```
 
 ### Scenario 2: CI/CD Setup (GitHub Actions)
 
-Setting up nomad-changelog in GitHub Actions workflow.
+Setting up ndiff in GitHub Actions workflow.
 
-**Configuration file** (nomad-changelog.toml):
+**Configuration file** (ndiff.toml):
 ```toml
 [git]
 backend = "github-api"
@@ -375,37 +375,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Download nomad-changelog
+      - name: Download ndiff
         run: |
-          wget https://github.com/myorg/nomad-changelog/releases/latest/download/nomad-changelog-linux-amd64
-          chmod +x nomad-changelog-linux-amd64
-          mv nomad-changelog-linux-amd64 /usr/local/bin/nomad-changelog
+          wget https://github.com/myorg/ndiff/releases/latest/download/ndiff-linux-amd64
+          chmod +x ndiff-linux-amd64
+          mv ndiff-linux-amd64 /usr/local/bin/ndiff
       
       - name: Verify configuration
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
           NOMAD_TOKEN: ${{ secrets.NOMAD_TOKEN }}
-        run: nomad-changelog config check
+        run: ndiff config check
       
       - name: Sync jobs
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
           NOMAD_TOKEN: ${{ secrets.NOMAD_TOKEN }}
-        run: nomad-changelog sync
+        run: ndiff sync
 ```
 
 ### Scenario 3: Kubernetes CronJob
 
-Running nomad-changelog as a Kubernetes CronJob.
+Running ndiff as a Kubernetes CronJob.
 
 **ConfigMap** (config.yaml):
 ```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nomad-changelog-config
+  name: ndiff-config
 data:
-  nomad-changelog.toml: |
+  ndiff.toml: |
     [git]
     backend = "github-api"
     owner = "myorg"
@@ -425,7 +425,7 @@ data:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: nomad-changelog-sync
+  name: ndiff-sync
 spec:
   schedule: "0 * * * *"  # Every hour
   jobTemplate:
@@ -433,16 +433,16 @@ spec:
       template:
         spec:
           containers:
-          - name: nomad-changelog
-            image: myorg/nomad-changelog:latest
+          - name: ndiff
+            image: myorg/ndiff:latest
             command:
             - /bin/sh
             - -c
             - |
               # Verify config first
-              nomad-changelog config check || exit 1
+              ndiff config check || exit 1
               # Then sync
-              nomad-changelog sync
+              ndiff sync
             env:
             - name: GITHUB_TOKEN
               valueFrom:
@@ -456,7 +456,7 @@ spec:
           volumes:
           - name: config
             configMap:
-              name: nomad-changelog-config
+              name: ndiff-config
           restartPolicy: OnFailure
 ```
 
@@ -466,17 +466,17 @@ You're having problems connecting to Nomad or your repository.
 
 ```bash
 # Step 1: Verify configuration syntax
-nomad-changelog config validate
+ndiff config validate
 
 # Step 2: Run comprehensive check
-nomad-changelog config check
+ndiff config check
 
 # Step 3: If checks fail, check specific issues:
 
 # For Nomad connection issues:
 export NOMAD_ADDR=http://your-nomad:4646
 export NOMAD_TOKEN=your-token
-nomad-changelog config check
+ndiff config check
 
 # For Git authentication issues (SSH):
 ssh-add -l  # Check loaded keys
@@ -484,7 +484,7 @@ ssh -T git@github.com  # Test GitHub SSH
 
 # For Git authentication issues (HTTPS):
 export GITHUB_TOKEN=ghp_yourtoken
-nomad-changelog config check
+ndiff config check
 
 # For GitHub API backend:
 export GITHUB_TOKEN=ghp_yourtoken
@@ -498,21 +498,21 @@ Switching from Git backend to GitHub API backend.
 
 ```bash
 # Step 1: Backup current config
-cp nomad-changelog.toml nomad-changelog.toml.bak
+cp ndiff.toml ndiff.toml.bak
 
 # Step 2: Create new config with GitHub API backend
-nomad-changelog init --force
+ndiff init --force
 # Choose: github-api
 # Enter GitHub owner and repo
 
 # Step 3: Verify new setup
-nomad-changelog config check
+ndiff config check
 
 # Step 4: Test sync
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 
 # If everything works:
-nomad-changelog sync
+ndiff sync
 ```
 
 ### Scenario 6: Adding New Jobs to Track
@@ -521,8 +521,8 @@ You deployed a new job and want to track it.
 
 **Method 1: Edit config file directly**
 ```bash
-# Edit nomad-changelog.toml
-vim nomad-changelog.toml
+# Edit ndiff.toml
+vim ndiff.toml
 
 # Add:
 # [[jobs]]
@@ -530,15 +530,15 @@ vim nomad-changelog.toml
 # namespace = "default"
 
 # Verify
-nomad-changelog config check
+ndiff config check
 
 # Sync
-nomad-changelog sync
+ndiff sync
 ```
 
 **Method 2: Recreate config**
 ```bash
-nomad-changelog init --force
+ndiff init --force
 # Add new job when prompted
 ```
 
@@ -548,15 +548,15 @@ You only want to sync certain jobs, not all configured jobs.
 
 ```bash
 # Sync only web-app and api-server
-nomad-changelog sync --jobs web-app,api-server
+ndiff sync --jobs web-app,api-server
 
 # Preview changes for specific jobs
-nomad-changelog sync --jobs web-app --dry-run
+ndiff sync --jobs web-app --dry-run
 ```
 
 ## Environment Variables
 
-nomad-changelog respects these environment variables:
+ndiff respects these environment variables:
 
 ### Nomad Configuration
 
@@ -594,13 +594,13 @@ Configuration values are resolved in this order (highest to lowest):
 # Config file says: branch = "main"
 # But you can override with:
 export NOMAD_CHANGELOG_GIT_BRANCH=develop
-nomad-changelog sync
+ndiff sync
 # Uses 'develop' branch
 ```
 
 ## Exit Codes
 
-nomad-changelog uses standard exit codes:
+ndiff uses standard exit codes:
 
 | Code | Meaning |
 |------|---------|
@@ -613,13 +613,13 @@ nomad-changelog uses standard exit codes:
 #!/bin/bash
 
 # Check configuration before syncing
-if ! nomad-changelog config check; then
+if ! ndiff config check; then
     echo "Configuration check failed!"
     exit 1
 fi
 
 # Sync jobs
-if nomad-changelog sync; then
+if ndiff sync; then
     echo "Sync successful"
 else
     echo "Sync failed"
@@ -633,14 +633,14 @@ fi
 
 After setup or configuration changes:
 ```bash
-nomad-changelog config check
+ndiff config check
 ```
 
 ### 2. Use Dry Run for Testing
 
 Before actual sync:
 ```bash
-nomad-changelog sync --dry-run
+ndiff sync --dry-run
 ```
 
 ### 3. Use Environment Variables for Secrets
@@ -659,27 +659,27 @@ export NOMAD_TOKEN=xxx
 
 When troubleshooting:
 ```bash
-nomad-changelog --verbose sync
+ndiff --verbose sync
 ```
 
 ### 5. Version Control Your Config
 
 Add to `.gitignore`:
 ```
-nomad-changelog-repo/
+ndiff-repo/
 *.log
 ```
 
 Commit your config (without secrets):
 ```
-git add nomad-changelog.toml
-git commit -m "Add nomad-changelog config"
+git add ndiff.toml
+git commit -m "Add ndiff config"
 ```
 
 ### 6. CI/CD: Check Before Sync
 
 ```bash
-nomad-changelog config check && nomad-changelog sync
+ndiff config check && ndiff sync
 ```
 
 ### 7. Monitor Sync Failures
@@ -692,63 +692,63 @@ Set up alerts for sync failures in your CI/CD system.
 
 ```bash
 # General help
-nomad-changelog --help
+ndiff --help
 
 # Command-specific help
-nomad-changelog sync --help
-nomad-changelog config --help
+ndiff sync --help
+ndiff config --help
 ```
 
 ### Check Configuration
 
 ```bash
 # Show current config
-nomad-changelog config show
+ndiff config show
 
 # Validate config
-nomad-changelog config validate
+ndiff config validate
 
 # Test all connections
-nomad-changelog config check
+ndiff config check
 ```
 
 ### Verbose Output
 
 ```bash
-nomad-changelog --verbose sync
+ndiff --verbose sync
 ```
 
 ### Documentation
 
 - [Main README](../README.md) - Getting started
 - [Backend Guide](BACKENDS.md) - Backend configuration
-- [GitHub Issues](https://github.com/wlame/nomad-changelog/issues) - Report bugs
+- [GitHub Issues](https://github.com/wlame/ndiff/issues) - Report bugs
 
 ## Quick Reference
 
 ```bash
 # First-time setup
-nomad-changelog init
-nomad-changelog config check
-nomad-changelog sync --dry-run
-nomad-changelog sync
+ndiff init
+ndiff config check
+ndiff sync --dry-run
+ndiff sync
 
 # Regular usage
-nomad-changelog sync                    # Sync all jobs
-nomad-changelog sync --jobs web-app     # Sync specific job
-nomad-changelog sync --dry-run          # Preview changes
+ndiff sync                    # Sync all jobs
+ndiff sync --jobs web-app     # Sync specific job
+ndiff sync --dry-run          # Preview changes
 
 # Configuration
-nomad-changelog config show             # Display config
-nomad-changelog config validate         # Validate syntax
-nomad-changelog config check            # Full connectivity check
+ndiff config show             # Display config
+ndiff config validate         # Validate syntax
+ndiff config check            # Full connectivity check
 
 # With environment variables
 export NOMAD_ADDR=http://nomad:4646
 export NOMAD_TOKEN=xxx
 export GITHUB_TOKEN=ghp_xxx
-nomad-changelog sync
+ndiff sync
 
 # Custom config file
-nomad-changelog --config /etc/nomad-changelog.toml sync
+ndiff --config /etc/ndiff.toml sync
 ```
