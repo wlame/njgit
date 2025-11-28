@@ -1,4 +1,4 @@
-// Package version provides version information for the ndiff binary.
+// Package version provides version information for the njgit binary.
 // This package is in the 'pkg' directory because it could theoretically be imported
 // by other projects, unlike the 'internal' packages which are private to this project.
 package version
@@ -9,15 +9,15 @@ import "fmt"
 // See the Makefile for how these are injected during the build process
 var (
 	// Version is the semantic version of the binary (e.g., "1.0.0")
-	// Set via: -ldflags "-X github.com/wlame/ndiff/pkg/version.Version=1.0.0"
+	// Set via: -ldflags "-X github.com/wlame/njgit/pkg/version.Version=1.0.0"
 	Version = "dev"
 
 	// Commit is the git commit hash the binary was built from
-	// Set via: -ldflags "-X github.com/wlame/ndiff/pkg/version.Commit=abc123"
+	// Set via: -ldflags "-X github.com/wlame/njgit/pkg/version.Commit=abc123"
 	Commit = "unknown"
 
 	// BuildTime is when the binary was built (RFC3339 format)
-	// Set via: -ldflags "-X github.com/wlame/ndiff/pkg/version.BuildTime=2025-11-26T10:30:00Z"
+	// Set via: -ldflags "-X github.com/wlame/njgit/pkg/version.BuildTime=2025-11-26T10:30:00Z"
 	BuildTime = "unknown"
 )
 
@@ -42,10 +42,10 @@ func Get() Info {
 }
 
 // String returns a human-readable version string
-// Format: "ndiff version <version> (commit: <commit>, built: <buildtime>)"
-// Example output: "ndiff version 1.0.0 (commit: abc123, built: 2025-11-26T10:30:00Z)"
+// Format: "njgit version <version> (commit: <commit>, built: <buildtime>)"
+// Example output: "njgit version 1.0.0 (commit: abc123, built: 2025-11-26T10:30:00Z)"
 func String() string {
-	return fmt.Sprintf("ndiff version %s (commit: %s, built: %s)",
+	return fmt.Sprintf("njgit version %s (commit: %s, built: %s)",
 		Version, Commit, BuildTime)
 }
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/ndiff/internal/config"
-	"github.com/wlame/ndiff/internal/hcl"
-	"github.com/wlame/ndiff/internal/nomad"
+	"github.com/wlame/njgit/internal/config"
+	"github.com/wlame/njgit/internal/hcl"
+	"github.com/wlame/njgit/internal/nomad"
 )
 
 var (
@@ -31,10 +31,10 @@ This is a development/testing command to verify:
 
 Example:
   # Fetch a job named "example" from the "default" namespace
-  ndiff test-fetch --job example --namespace default
+  njgit test-fetch --job example --namespace default
 
   # With custom config
-  ndiff test-fetch --job example --config ./my-config.toml`,
+  njgit test-fetch --job example --config ./my-config.toml`,
 	RunE: testFetchRun,
 }
 

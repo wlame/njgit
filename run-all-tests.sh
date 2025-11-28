@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run all tests for ndiff
+# Run all tests for njgit
 
 set -e  # Exit on first error
 
@@ -10,7 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo "=================================="
-echo "  ndiff - All Tests"
+echo "  njgit - All Tests"
 echo "=================================="
 echo ""
 

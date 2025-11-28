@@ -1,8 +1,8 @@
-# Makefile for ndiff
+# Makefile for njgit
 
 # Variables
-BINARY_NAME=ndiff
-MAIN_PATH=./cmd/ndiff
+BINARY_NAME=njgit
+MAIN_PATH=./cmd/njgit
 BUILD_DIR=.
 GO=go
 
@@ -12,9 +12,9 @@ COMMIT?=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME?=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 
 # Go build flags
-LDFLAGS=-ldflags "-X github.com/wlame/ndiff/pkg/version.Version=$(VERSION) \
-	-X github.com/wlame/ndiff/pkg/version.Commit=$(COMMIT) \
-	-X github.com/wlame/ndiff/pkg/version.BuildTime=$(BUILD_TIME)"
+LDFLAGS=-ldflags "-X github.com/wlame/njgit/pkg/version.Version=$(VERSION) \
+	-X github.com/wlame/njgit/pkg/version.Commit=$(COMMIT) \
+	-X github.com/wlame/njgit/pkg/version.BuildTime=$(BUILD_TIME)"
 
 .PHONY: all build install clean test deps run help
 

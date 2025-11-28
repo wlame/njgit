@@ -1,4 +1,4 @@
-// Package commands implements all CLI commands for ndiff.
+// Package commands implements all CLI commands for njgit.
 // It uses the Cobra library which is the standard for CLI applications in Go.
 package commands
 
@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/ndiff/pkg/version"
+	"github.com/wlame/njgit/pkg/version"
 )
 
 var (
@@ -24,13 +24,13 @@ var (
 // In Cobra, the root command is the entry point for the CLI
 var rootCmd = &cobra.Command{
 	// Use defines the command name
-	Use: "ndiff",
+	Use: "njgit",
 
 	// Short is a brief description shown in help output
 	Short: "Track Nomad job configuration changes in Git",
 
 	// Long is the detailed description shown in 'help' output
-	Long: `ndiff is a stateless CLI tool that tracks Nomad job
+	Long: `njgit is a stateless CLI tool that tracks Nomad job
 configuration changes by syncing them to a Git repository.
 
 It provides version history and rollback capabilities for your Nomad jobs
@@ -45,15 +45,15 @@ Key features:
 
 Example usage:
   # Sync all configured jobs
-  ndiff sync
+  njgit sync
 
   # Initialize a new repository
-  ndiff init
+  njgit init
 
   # Show pending changes
-  ndiff diff
+  njgit diff
 
-For more information, see: https://github.com/wlame/ndiff`,
+For more information, see: https://github.com/wlame/njgit`,
 
 	// SilenceUsage prevents showing usage on errors
 	// We don't want to show the full usage every time there's an error
@@ -80,7 +80,7 @@ func init() {
 	// --config flag: Path to config file
 	// The flag is bound to the cfgFile variable
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "",
-		"config file (default: ./ndiff.toml)")
+		"config file (default: ./njgit.toml)")
 
 	// --verbose flag: Enable verbose output
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false,
@@ -105,7 +105,7 @@ func init() {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
-	Long:  `Display the version, commit hash, and build time of ndiff.`,
+	Long:  `Display the version, commit hash, and build time of njgit.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// The Run function is called when the command is executed
 		// cmd: The command being run

@@ -12,7 +12,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/wlame/ndiff/internal/config"
+	"github.com/wlame/njgit/internal/config"
 )
 
 // Repository represents a Git repository and provides file operations

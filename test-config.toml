@@ -3,7 +3,7 @@
 url = "git@github.com:wlame/nomad-jobs-test.git"
 branch = "main"
 auth_method = "ssh"
-author_name = "ndiff-bot"
+author_name = "njgit-bot"
 author_email = "bot@example.com"
 
 [nomad]

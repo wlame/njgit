@@ -1,6 +1,6 @@
 # Backend Configuration Guide
 
-ndiff supports two different storage backends for tracking Nomad job configurations. This guide explains both backends and helps you choose the right one for your use case.
+njgit supports two different storage backends for tracking Nomad job configurations. This guide explains both backends and helps you choose the right one for your use case.
 
 ## Table of Contents
 
@@ -12,7 +12,7 @@ ndiff supports two different storage backends for tracking Nomad job configurati
 
 ## Overview
 
-A **backend** is how ndiff stores and tracks changes to your Nomad job configurations. Think of it as the "database" where your job history is saved.
+A **backend** is how njgit stores and tracks changes to your Nomad job configurations. Think of it as the "database" where your job history is saved.
 
 ### Available Backends
 
@@ -65,10 +65,10 @@ The **Git backend** is the default option. It uses a local Git repository that y
 [git]
 backend = "git"  # Optional - "git" is the default
 local_path = "."  # Directory containing the repository (default: current directory)
-repo_name = "ndiff-repo"  # Repository directory name (default: "ndiff-repo")
+repo_name = "njgit-repo"  # Repository directory name (default: "njgit-repo")
 branch = "main"
-author_name = "ndiff"
-author_email = "ndiff@localhost"
+author_name = "njgit"
+author_email = "njgit@localhost"
 ```
 
 #### Full Configuration Options
@@ -79,14 +79,14 @@ backend = "git"
 local_path = "/home/user/repositories"  # Directory containing the repository
 repo_name = "nomad-jobs"  # Repository directory name
 branch = "main"
-author_name = "ndiff"
+author_name = "njgit"
 author_email = "bot@example.com"
 ```
 
 **All fields explained**:
 - `backend` - Always "git" for this backend (default if omitted)
 - `local_path` - Directory containing the repository (default: "." = current directory)
-- `repo_name` - Repository directory name (default: "ndiff-repo")
+- `repo_name` - Repository directory name (default: "njgit-repo")
 - `branch` - Branch to commit to (default: "main")
 - `author_name` - Name used in Git commits
 - `author_email` - Email used in Git commits
@@ -101,15 +101,15 @@ author_email = "bot@example.com"
 
 #### 1. Initialize the Repository
 
-You must initialize the Git repository yourself before using ndiff:
+You must initialize the Git repository yourself before using njgit:
 
 ```bash
 # Option A: Initialize in current directory
 git init -b main
-git config user.name "ndiff"
-git config user.email "ndiff@localhost"
+git config user.name "njgit"
+git config user.email "njgit@localhost"
 
-# Then configure ndiff to use current directory
+# Then configure njgit to use current directory
 # (default config uses "." as local_path)
 ```
 
@@ -119,10 +119,10 @@ mkdir -p /home/user/repositories
 cd /home/user/repositories
 git init -b main nomad-jobs
 cd nomad-jobs
-git config user.name "ndiff"
-git config user.email "ndiff@localhost"
+git config user.name "njgit"
+git config user.email "njgit@localhost"
 
-# Then configure ndiff with:
+# Then configure njgit with:
 # local_path = "/home/user/repositories"
 # repo_name = "nomad-jobs"
 ```
@@ -145,9 +145,9 @@ git remote add origin git@gitlab.com:myorg/nomad-jobs.git
 git remote add origin git@git.example.com:path/to/repo.git
 ```
 
-#### 3. Configure ndiff
+#### 3. Configure njgit
 
-Create or edit `~/.config/ndiff/config.toml`:
+Create or edit `~/.config/njgit/config.toml`:
 
 ```toml
 [nomad]
@@ -158,8 +158,8 @@ backend = "git"
 local_path = "/home/user/repositories"  # Or "." for current directory
 repo_name = "nomad-jobs"
 branch = "main"
-author_name = "ndiff"
-author_email = "ndiff@localhost"
+author_name = "njgit"
+author_email = "njgit@localhost"
 
 [[jobs]]
 name = "my-job"
@@ -170,7 +170,7 @@ region = "global"
 #### 4. Run Sync
 
 ```bash
-ndiff sync
+njgit sync
 ```
 
 The tool will commit changes locally. You can push manually whenever you want:
@@ -188,7 +188,7 @@ Perfect for developers who want to review commits before pushing:
 
 ```bash
 # Sync changes (commits locally)
-ndiff sync
+njgit sync
 
 # Review commits
 cd /home/user/repositories/nomad-jobs
@@ -209,15 +209,15 @@ For environments without internet access:
 # Initialize local repository (one-time setup)
 cd /opt/nomad-tracking
 git init -b main
-git config user.name "ndiff"
-git config user.email "ndiff@localhost"
+git config user.name "njgit"
+git config user.email "njgit@localhost"
 
 # Sync creates local commits (no network needed)
-ndiff sync
+njgit sync
 
 # All history is stored locally
 git log --oneline
-ndiff history
+njgit history
 ```
 
 #### Example 3: Using with Different Remotes
@@ -339,8 +339,8 @@ backend = "github-api"
 owner = "myorg"  # GitHub organization or username
 repo = "nomad-jobs"  # Repository name
 branch = "main"
-author_name = "ndiff"  # Optional - used in commits
-author_email = "ndiff@localhost"  # Optional - used in commits
+author_name = "njgit"  # Optional - used in commits
+author_email = "njgit@localhost"  # Optional - used in commits
 
 # Token via environment variable (recommended):
 # export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
@@ -354,7 +354,7 @@ The GitHub API backend **requires** a GitHub Personal Access Token (PAT).
 
 1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
 2. Click "Generate new token (classic)"
-3. Give it a descriptive name (e.g., "ndiff")
+3. Give it a descriptive name (e.g., "njgit")
 4. Select scopes:
    - `repo` (Full control of private repositories)
    - Or `public_repo` (for public repositories only)
@@ -367,7 +367,7 @@ The GitHub API backend **requires** a GitHub Personal Access Token (PAT).
 
 ```bash
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
-ndiff sync
+njgit sync
 ```
 
 **Option 2: Config File (Not Recommended)**
@@ -415,7 +415,7 @@ branch = "main"
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: ndiff-sync
+  name: njgit-sync
 spec:
   schedule: "0 * * * *"  # Every hour
   jobTemplate:
@@ -423,8 +423,8 @@ spec:
       template:
         spec:
           containers:
-          - name: ndiff
-            image: myorg/ndiff:latest
+          - name: njgit
+            image: myorg/njgit:latest
             env:
             - name: GITHUB_TOKEN
               valueFrom:
@@ -433,7 +433,7 @@ spec:
                   key: token
             - name: NOMAD_ADDR
               value: "http://nomad.default.svc.cluster.local:4646"
-            command: ["ndiff", "sync"]
+            command: ["njgit", "sync"]
           restartPolicy: OnFailure
 ```
 
@@ -495,8 +495,8 @@ Don't forget to initialize the repository with `git init`!
 ```bash
 cd /path
 git init -b main
-git config user.name "ndiff"
-git config user.email "ndiff@localhost"
+git config user.name "njgit"
+git config user.email "njgit@localhost"
 ```
 
 **Problem**: `not a git repository`
@@ -512,8 +512,8 @@ git init -b main
 **Solution**: Configure Git user in the repository:
 ```bash
 cd /path/to/repo
-git config user.name "ndiff"
-git config user.email "ndiff@localhost"
+git config user.name "njgit"
+git config user.email "njgit@localhost"
 ```
 
 ### GitHub API Backend Issues

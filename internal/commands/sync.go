@@ -7,10 +7,10 @@ import (
 
 	"github.com/hashicorp/nomad/api"
 	"github.com/spf13/cobra"
-	"github.com/wlame/ndiff/internal/backend"
-	"github.com/wlame/ndiff/internal/config"
-	"github.com/wlame/ndiff/internal/hcl"
-	"github.com/wlame/ndiff/internal/nomad"
+	"github.com/wlame/njgit/internal/backend"
+	"github.com/wlame/njgit/internal/config"
+	"github.com/wlame/njgit/internal/hcl"
+	"github.com/wlame/njgit/internal/nomad"
 )
 
 var (
@@ -38,16 +38,16 @@ Each changed job gets its own commit with a detailed message showing what change
 
 Examples:
   # Sync all configured jobs
-  ndiff sync
+  njgit sync
 
   # Sync specific jobs only
-  ndiff sync --jobs web-server,api-server
+  njgit sync --jobs web-server,api-server
 
   # Dry run (show what would change without committing)
-  ndiff sync --dry-run
+  njgit sync --dry-run
 
   # Commit locally but don't push to remote
-  ndiff sync --no-push`,
+  njgit sync --no-push`,
 	RunE: syncRun,
 }
 

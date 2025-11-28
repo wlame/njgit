@@ -1,4 +1,4 @@
-// Package tests contains integration tests for ndiff
+// Package tests contains integration tests for njgit
 // These tests use testcontainers to spin up real Nomad and Git environments
 package tests
 
@@ -17,11 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/wlame/ndiff/internal/backend"
-	"github.com/wlame/ndiff/internal/config"
-	gitpkg "github.com/wlame/ndiff/internal/git"
-	"github.com/wlame/ndiff/internal/hcl"
-	"github.com/wlame/ndiff/internal/nomad"
+	"github.com/wlame/njgit/internal/backend"
+	"github.com/wlame/njgit/internal/config"
+	gitpkg "github.com/wlame/njgit/internal/git"
+	"github.com/wlame/njgit/internal/hcl"
+	"github.com/wlame/njgit/internal/nomad"
 )
 
 // TestNomadContainer tests that we can start a Nomad container and connect to it
@@ -152,7 +152,7 @@ func TestGitRepository(t *testing.T) {
 	}
 
 	// Create a temporary directory for the bare repo (acts as remote)
-	remoteDir, err := os.MkdirTemp("", "ndiff-remote-*")
+	remoteDir, err := os.MkdirTemp("", "njgit-remote-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(remoteDir)
 
@@ -164,7 +164,7 @@ func TestGitRepository(t *testing.T) {
 
 	// Create a temporary working directory to make an initial commit
 	// Bare repos need at least one commit before they can be cloned
-	workDir, err := os.MkdirTemp("", "ndiff-work-*")
+	workDir, err := os.MkdirTemp("", "njgit-work-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(workDir)
 
@@ -254,7 +254,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 	t.Logf("Deployed job: %s", jobID)
 
 	// 3. Create bare Git repo with initial commit
-	remoteDir, err := os.MkdirTemp("", "ndiff-remote-*")
+	remoteDir, err := os.MkdirTemp("", "njgit-remote-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(remoteDir)
 
@@ -262,7 +262,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create initial commit (bare repo needs at least one commit)
-	workDir, err := os.MkdirTemp("", "ndiff-work-*")
+	workDir, err := os.MkdirTemp("", "njgit-work-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(workDir)
 
@@ -322,7 +322,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 
 	hash, err := repo.Commit(
 		fmt.Sprintf("Add %s", jobID),
-		"ndiff-test",
+		"njgit-test",
 		"test@example.com",
 	)
 	require.NoError(t, err)
@@ -558,7 +558,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 	t.Log("Deployed job version 1")
 
 	// Create local Git repo (local-only mode)
-	localDir, err := os.MkdirTemp("", "ndiff-local-*")
+	localDir, err := os.MkdirTemp("", "njgit-local-*")
 	if err != nil {
 		t.Fatalf("Failed to create local dir: %v", err)
 	}

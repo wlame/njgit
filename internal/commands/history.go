@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/ndiff/internal/config"
-	gitpkg "github.com/wlame/ndiff/internal/git"
+	"github.com/wlame/njgit/internal/config"
+	gitpkg "github.com/wlame/njgit/internal/git"
 )
 
 var (
@@ -33,16 +33,16 @@ You can filter by job name/namespace or show all changes.
 
 Examples:
   # Show all history
-  ndiff history
+  njgit history
 
   # Show last 10 commits
-  ndiff history --limit 10
+  njgit history --limit 10
 
   # Show history for specific job
-  ndiff history --job web-app --namespace default
+  njgit history --job web-app --namespace default
 
   # Verbose output with file names
-  ndiff history --verbose`,
+  njgit history --verbose`,
 	RunE: historyRun,
 }
 
@@ -115,7 +115,7 @@ func showGitHistory(cfg *config.Config) error {
 		} else {
 			PrintWarning("No commits found in repository")
 			fmt.Println()
-			fmt.Println("💡 Tip: Run 'ndiff sync' to start tracking changes")
+			fmt.Println("💡 Tip: Run 'njgit sync' to start tracking changes")
 		}
 		return nil
 	}
@@ -167,10 +167,10 @@ func showGitHistory(cfg *config.Config) error {
 
 	// Show next steps
 	fmt.Println("💡 Next steps:")
-	fmt.Println("  • View a specific version: ndiff show <commit-hash>")
-	fmt.Println("  • Deploy a previous version: ndiff deploy <commit-hash> <job>")
+	fmt.Println("  • View a specific version: njgit show <commit-hash>")
+	fmt.Println("  • Deploy a previous version: njgit deploy <commit-hash> <job>")
 	if !IsVerbose() {
-		fmt.Println("  • Show changed files: ndiff history --verbose")
+		fmt.Println("  • Show changed files: njgit history --verbose")
 	}
 	fmt.Println()
 
@@ -212,8 +212,8 @@ func showGitHubHistory(cfg *config.Config) error {
 	fmt.Println("💡 Using GitHub API backend:")
 	fmt.Println("  • History is stored on GitHub")
 	fmt.Println("  • Click the link above to view commits in your browser")
-	fmt.Println("  • Use 'ndiff show <commit-hash>' to view specific versions")
-	fmt.Println("  • Use 'ndiff deploy <commit-hash> <job>' to rollback")
+	fmt.Println("  • Use 'njgit show <commit-hash>' to view specific versions")
+	fmt.Println("  • Use 'njgit deploy <commit-hash> <job>' to rollback")
 	fmt.Println()
 
 	return nil

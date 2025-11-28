@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/ndiff/internal/backend"
-	"github.com/wlame/ndiff/internal/config"
-	"github.com/wlame/ndiff/internal/nomad"
+	"github.com/wlame/njgit/internal/backend"
+	"github.com/wlame/njgit/internal/config"
+	"github.com/wlame/njgit/internal/nomad"
 )
 
 // configCmd represents the config command and its subcommands
@@ -115,7 +115,7 @@ func init() {
 
 func configCheckRun(cmd *cobra.Command, args []string) error {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println("🔍 Checking ndiff configuration...")
+	fmt.Println("🔍 Checking njgit configuration...")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
 
@@ -129,7 +129,7 @@ func configCheckRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		PrintError(fmt.Errorf("   ❌ Failed to load configuration: %w", err))
 		fmt.Println()
-		fmt.Println("💡 Tip: Run 'ndiff init' to create a configuration file")
+		fmt.Println("💡 Tip: Run 'njgit init' to create a configuration file")
 		return err
 	}
 	PrintSuccess("   ✅ Configuration file loaded")
@@ -310,11 +310,11 @@ func configCheckRun(cmd *cobra.Command, args []string) error {
 		fmt.Println("⚠️  Configuration check passed with warnings.")
 		fmt.Println("   The tool will work but some issues should be addressed.")
 	} else {
-		fmt.Println("✅ All checks passed! You're ready to use ndiff.")
+		fmt.Println("✅ All checks passed! You're ready to use njgit.")
 		fmt.Println()
 		fmt.Println("🚀 Next steps:")
-		fmt.Println("   • Run 'ndiff sync' to start tracking job changes")
-		fmt.Println("   • Run 'ndiff sync --dry-run' to preview changes first")
+		fmt.Println("   • Run 'njgit sync' to start tracking job changes")
+		fmt.Println("   • Run 'njgit sync --dry-run' to preview changes first")
 	}
 
 	return nil

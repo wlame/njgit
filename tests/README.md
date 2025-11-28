@@ -1,6 +1,6 @@
 # Integration Tests
 
-This directory contains integration tests for ndiff using testcontainers-go.
+This directory contains integration tests for njgit using testcontainers-go.
 
 ## Overview
 

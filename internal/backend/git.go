@@ -1,4 +1,4 @@
-// Package backend provides storage backend implementations for ndiff
+// Package backend provides storage backend implementations for njgit
 package backend
 
 import (
@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wlame/ndiff/internal/config"
-	gitpkg "github.com/wlame/ndiff/internal/git"
+	"github.com/wlame/njgit/internal/config"
+	gitpkg "github.com/wlame/njgit/internal/git"
 )
 
 // GitBackend implements the Backend interface using a local Git repository
@@ -68,7 +68,7 @@ func (g *GitBackend) Initialize() error {
 			"Please initialize a Git repository first:\n"+
 			"  cd %s\n"+
 			"  git init\n\n"+
-			"Then run ndiff again.", g.localPath, g.localPath)
+			"Then run njgit again.", g.localPath, g.localPath)
 	}
 
 	// Open the existing repository

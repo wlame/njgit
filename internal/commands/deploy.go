@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wlame/ndiff/internal/config"
-	gitpkg "github.com/wlame/ndiff/internal/git"
-	"github.com/wlame/ndiff/internal/hcl"
-	"github.com/wlame/ndiff/internal/nomad"
+	"github.com/wlame/njgit/internal/config"
+	gitpkg "github.com/wlame/njgit/internal/git"
+	"github.com/wlame/njgit/internal/hcl"
+	"github.com/wlame/njgit/internal/nomad"
 )
 
 var (
@@ -41,21 +41,21 @@ potentially overwriting current job settings.
 
 Examples:
   # Deploy with auto-detected job name (typical usage)
-  ndiff deploy a1b2c3d4
+  njgit deploy a1b2c3d4
 
   # Deploy a specific job (useful if commit was made manually with multiple jobs)
-  ndiff deploy a1b2c3d4 web-app
+  njgit deploy a1b2c3d4 web-app
 
   # Deploy with specific namespace
-  ndiff deploy a1b2c3d4 web-app --namespace production
+  njgit deploy a1b2c3d4 web-app --namespace production
 
   # Preview what would be deployed (dry run)
-  ndiff deploy a1b2c3d4 --dry-run
+  njgit deploy a1b2c3d4 --dry-run
 
 Workflow:
-  1. Find the commit: ndiff history
-  2. Review the version: ndiff show <commit>
-  3. Deploy it: ndiff deploy <commit>`,
+  1. Find the commit: njgit history
+  2. Review the version: njgit show <commit>
+  3. Deploy it: njgit deploy <commit>`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: deployRun,
 }
@@ -195,7 +195,7 @@ func detectJobFromCommit(cfg *config.Config, commitHash, region, namespace strin
 	if backendType != "git" {
 		return "", fmt.Errorf("auto-detection only supports git backend\n\n"+
 			"Please specify job name explicitly:\n"+
-			"  ndiff deploy %s <job-name>", commitHash)
+			"  njgit deploy %s <job-name>", commitHash)
 	}
 
 	// Open local repository
@@ -251,7 +251,7 @@ func detectJobFromCommit(cfg *config.Config, commitHash, region, namespace strin
 			"Changed files:\n"+
 			"%v\n\n"+
 			"Please specify job name explicitly:\n"+
-			"  ndiff deploy %s <job-name> --region %s --namespace %s",
+			"  njgit deploy %s <job-name> --region %s --namespace %s",
 			region, namespace, commitHash, commitInfo.Files, commitHash, region, namespace)
 	}
 
@@ -264,7 +264,7 @@ func detectJobFromCommit(cfg *config.Config, commitHash, region, namespace strin
 
 		return "", fmt.Errorf("commit affects multiple jobs: %v\n\n"+
 			"Please specify which job to deploy:\n"+
-			"  ndiff deploy %s <job-name> --region %s --namespace %s",
+			"  njgit deploy %s <job-name> --region %s --namespace %s",
 			jobs, commitHash, region, namespace)
 	}
 
@@ -286,7 +286,7 @@ func getJobFromCommit(cfg *config.Config, commitHash, region, namespace, jobName
 	if backendType != "git" {
 		return nil, fmt.Errorf("deploy command currently only supports git backend\n\n"+
 			"For GitHub API backend:\n"+
-			"  1. View the file on GitHub: ndiff show %s --job %s\n"+
+			"  1. View the file on GitHub: njgit show %s --job %s\n"+
 			"  2. Copy the job specification\n"+
 			"  3. Deploy manually: nomad job run <file>", commitHash, jobName)
 	}

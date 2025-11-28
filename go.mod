@@ -1,4 +1,4 @@
-module github.com/wlame/ndiff
+module github.com/wlame/njgit
 
 go 1.25.4
 

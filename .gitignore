@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-ndiff
+njgit
 dist/
 
 # Test binary, built with `go test -c`
@@ -20,7 +20,7 @@ go.work
 vendor/
 
 # Configuration files (may contain secrets)
-ndiff.toml
+njgit.toml
 *.local.toml
 
 # IDE

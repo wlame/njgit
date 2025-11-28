@@ -1,4 +1,4 @@
-// Package config handles loading and managing configuration for ndiff.
+// Package config handles loading and managing configuration for njgit.
 // It uses Viper to support multiple configuration sources: files, environment variables, and CLI flags.
 package config
 
@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config is the main configuration structure for ndiff
+// Config is the main configuration structure for njgit
 // It maps directly to the TOML configuration file structure
 type Config struct {
 	// Git contains all Git repository related configuration
@@ -130,7 +130,7 @@ type ChangesConfig struct {
 //
 // Parameters:
 //   - configPath: Path to the configuration file. If empty, will look for
-//     "ndiff.toml" in the current directory
+//     "njgit.toml" in the current directory
 //
 // Returns:
 //   - *Config: The loaded configuration
@@ -146,7 +146,7 @@ func Load(configPath string) (*Config, error) {
 		v.SetConfigFile(configPath)
 	} else {
 		// Look for config file in current directory
-		v.SetConfigName("ndiff") // Name of config file (without extension)
+		v.SetConfigName("njgit") // Name of config file (without extension)
 		v.SetConfigType("toml")  // Config file format
 		v.AddConfigPath(".")     // Look in current directory
 	}
@@ -200,8 +200,8 @@ func setDefaults(v *viper.Viper) {
 
 	// GitHub API backend defaults
 	v.SetDefault("git.branch", "main")
-	v.SetDefault("git.author_name", "ndiff")
-	v.SetDefault("git.author_email", "ndiff@localhost")
+	v.SetDefault("git.author_name", "njgit")
+	v.SetDefault("git.author_email", "njgit@localhost")
 
 	// Nomad defaults
 	// No defaults for address or token - these must be provided

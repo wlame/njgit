@@ -1,10 +1,10 @@
-# ndiff
+# njgit
 
 A lightweight CLI tool that tracks HashiCorp Nomad job configuration changes using Git, providing version history and rollback capabilities.
 
-## What is ndiff?
+## What is njgit?
 
-ndiff automatically syncs your Nomad job specifications to Git, creating a version-controlled history of all changes. It detects configuration changes, commits them with detailed messages, and allows you to view history and rollback to previous versions.
+njgit automatically syncs your Nomad job specifications to Git, creating a version-controlled history of all changes. It detects configuration changes, commits them with detailed messages, and allows you to view history and rollback to previous versions.
 
 **Key Features:**
 - 🔄 **Automatic change detection** - Only commits when jobs actually change
@@ -18,18 +18,18 @@ ndiff automatically syncs your Nomad job specifications to Git, creating a versi
 
 ### 1. Install
 
-**Download the binary** for your platform from [releases](https://github.com/wlame/ndiff/releases), or build from source:
+**Download the binary** for your platform from [releases](https://github.com/wlame/njgit/releases), or build from source:
 
 ```bash
-git clone https://github.com/wlame/ndiff
-cd ndiff
-go build -o ndiff ./cmd/ndiff
+git clone https://github.com/wlame/njgit
+cd njgit
+go build -o njgit ./cmd/njgit
 ```
 
 ### 2. Initialize Configuration
 
 ```bash
-ndiff init
+njgit init
 ```
 
 This interactive wizard will ask you:
@@ -56,13 +56,13 @@ git remote add origin git@github.com:yourorg/nomad-jobs.git
 
 ```bash
 # Sync your jobs to Git
-ndiff sync
+njgit sync
 
 # View history
-ndiff history
+njgit history
 
 # Deploy a previous version
-ndiff deploy <commit-hash> <job-name>
+njgit deploy <commit-hash> <job-name>
 ```
 
 ## How It Works
@@ -90,16 +90,16 @@ us-west/
 
 ### Workflow
 
-1. **Sync**: `ndiff sync` fetches job specs from Nomad, converts them to HCL, and commits changes
-2. **History**: `ndiff history` shows all commits with job changes
-3. **Show**: `ndiff show <commit>` displays a specific version
-4. **Deploy**: `ndiff deploy <commit> <job>` rolls back to a previous version
+1. **Sync**: `njgit sync` fetches job specs from Nomad, converts them to HCL, and commits changes
+2. **History**: `njgit history` shows all commits with job changes
+3. **Show**: `njgit show <commit>` displays a specific version
+4. **Deploy**: `njgit deploy <commit> <job>` rolls back to a previous version
 
 ## Configuration
 
 ### Configuration File
 
-Create `ndiff.toml` (or run `ndiff init`):
+Create `njgit.toml` (or run `njgit init`):
 
 ```toml
 # Git backend (local-only)
@@ -159,7 +159,7 @@ backend = "github-api"
 owner = "myorg"
 repo = "nomad-jobs"
 branch = "main"
-author_name = "ndiff"
+author_name = "njgit"
 author_email = "bot@example.com"
 ```
 
@@ -171,23 +171,23 @@ author_email = "bot@example.com"
 
 ## Commands
 
-### `ndiff init`
+### `njgit init`
 
-Interactive setup wizard. Creates `ndiff.toml` configuration file.
+Interactive setup wizard. Creates `njgit.toml` configuration file.
 
 ```bash
-ndiff init
-ndiff init --force  # Overwrite existing config
+njgit init
+njgit init --force  # Overwrite existing config
 ```
 
-### `ndiff sync`
+### `njgit sync`
 
 Fetches jobs from Nomad, detects changes, and commits to Git.
 
 ```bash
-ndiff sync                    # Sync all configured jobs
-ndiff sync --dry-run         # Preview changes without committing
-ndiff sync --jobs web-app    # Sync specific jobs only
+njgit sync                    # Sync all configured jobs
+njgit sync --dry-run         # Preview changes without committing
+njgit sync --jobs web-app    # Sync specific jobs only
 ```
 
 **What it does:**
@@ -196,48 +196,48 @@ ndiff sync --jobs web-app    # Sync specific jobs only
 3. Compares with last committed version
 4. Commits if changed (with detailed message)
 
-### `ndiff history`
+### `njgit history`
 
 Shows commit history for jobs.
 
 ```bash
-ndiff history                              # Show all commits
-ndiff history --job web-app                # Filter by job
-ndiff history --namespace production       # Filter by namespace
-ndiff history --region us-west             # Filter by region
-ndiff history --limit 10                   # Show last 10 commits
+njgit history                              # Show all commits
+njgit history --job web-app                # Filter by job
+njgit history --namespace production       # Filter by namespace
+njgit history --region us-west             # Filter by region
+njgit history --limit 10                   # Show last 10 commits
 ```
 
-### `ndiff show`
+### `njgit show`
 
 Displays job configuration from a specific commit.
 
 ```bash
-ndiff show abc123                               # Interactive file selection
-ndiff show abc123 --job web-app                 # Show specific job
-ndiff show abc123 --job web-app --region global --namespace default
+njgit show abc123                               # Interactive file selection
+njgit show abc123 --job web-app                 # Show specific job
+njgit show abc123 --job web-app --region global --namespace default
 ```
 
-### `ndiff deploy`
+### `njgit deploy`
 
 Deploys a job from a specific commit (rollback feature).
 
 ```bash
-ndiff deploy abc123                    # Auto-detect job from commit
-ndiff deploy abc123 web-app           # Deploy specific job
-ndiff deploy abc123 web-app --region us-west --namespace production
-ndiff deploy abc123 web-app --dry-run  # Preview without deploying
+njgit deploy abc123                    # Auto-detect job from commit
+njgit deploy abc123 web-app           # Deploy specific job
+njgit deploy abc123 web-app --region us-west --namespace production
+njgit deploy abc123 web-app --dry-run  # Preview without deploying
 ```
 
-**Auto-detection:** If the commit only changed one job, ndiff automatically detects which job to deploy.
+**Auto-detection:** If the commit only changed one job, njgit automatically detects which job to deploy.
 
-### `ndiff config`
+### `njgit config`
 
 Manage configuration.
 
 ```bash
-ndiff config check     # Validate config and test connections
-ndiff config show      # Display current configuration
+njgit config check     # Validate config and test connections
+njgit config show      # Display current configuration
 ```
 
 ## Examples
@@ -246,25 +246,25 @@ ndiff config show      # Display current configuration
 
 ```bash
 # 1. Set up
-ndiff init
+njgit init
 git init
 
 # 2. Track your jobs
-ndiff sync
+njgit sync
 
 # 3. Make changes in Nomad UI or nomad CLI
 nomad job run web-app.nomad
 
 # 4. Sync changes to Git  
-ndiff sync
+njgit sync
 # Creates commit: "Update global/default/web-app"
 
 # 5. View history
-ndiff history --job web-app
+njgit history --job web-app
 # Shows all changes to web-app
 
 # 6. Rollback to previous version
-ndiff deploy abc123 web-app
+njgit deploy abc123 web-app
 # Deploys the version from commit abc123
 ```
 
@@ -286,9 +286,9 @@ jobs:
           NOMAD_ADDR: ${{ secrets.NOMAD_ADDR }}
           NOMAD_TOKEN: ${{ secrets.NOMAD_TOKEN }}
         run: |
-          curl -L https://github.com/wlame/ndiff/releases/latest/download/ndiff-linux-amd64 -o ndiff
-          chmod +x ndiff
-          ./ndiff sync
+          curl -L https://github.com/wlame/njgit/releases/latest/download/njgit-linux-amd64 -o njgit
+          chmod +x njgit
+          ./njgit sync
           git push
 ```
 
@@ -341,7 +341,7 @@ Token needs `repo` scope for private repositories.
 
 ### Change Detection
 
-ndiff intelligently ignores Nomad-internal fields that change on every deployment:
+njgit intelligently ignores Nomad-internal fields that change on every deployment:
 
 - `ModifyIndex`
 - `ModifyTime`
@@ -396,7 +396,7 @@ git config user.email "you@example.com"
 
 **Problem:** No jobs listed in config file.
 
-**Solution:** Add jobs to `ndiff.toml`:
+**Solution:** Add jobs to `njgit.toml`:
 ```toml
 [[jobs]]
 name = "your-job"
@@ -407,7 +407,7 @@ region = "global"
 ### Configuration validation
 
 ```bash
-ndiff config check
+njgit config check
 ```
 
 This validates your config and tests connections to Nomad and Git.
@@ -422,22 +422,22 @@ This validates your config and tests connections to Nomad and Git.
 ### Build
 
 ```bash
-git clone https://github.com/wlame/ndiff
-cd ndiff
-go build -o ndiff ./cmd/ndiff
+git clone https://github.com/wlame/njgit
+cd njgit
+go build -o njgit ./cmd/njgit
 ```
 
 ### Cross-compilation
 
 ```bash
 # Linux
-GOOS=linux GOARCH=amd64 go build -o ndiff-linux ./cmd/ndiff
+GOOS=linux GOARCH=amd64 go build -o njgit-linux ./cmd/njgit
 
 # macOS (Apple Silicon)
-GOOS=darwin GOARCH=arm64 go build -o ndiff-darwin-arm64 ./cmd/ndiff
+GOOS=darwin GOARCH=arm64 go build -o njgit-darwin-arm64 ./cmd/njgit
 
 # Windows
-GOOS=windows GOARCH=amd64 go build -o ndiff.exe ./cmd/ndiff
+GOOS=windows GOARCH=amd64 go build -o njgit.exe ./cmd/njgit
 ```
 
 Or use the included build script:
@@ -460,8 +460,8 @@ go test ./internal/...
 ## Project Structure
 
 ```
-ndiff/
-├── cmd/ndiff/          # Main entry point
+njgit/
+├── cmd/njgit/          # Main entry point
 ├── internal/
 │   ├── backend/        # Storage backends (Git, GitHub API)
 │   ├── commands/       # CLI commands (sync, deploy, history, etc.)

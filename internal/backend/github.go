@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wlame/ndiff/internal/config"
+	"github.com/wlame/njgit/internal/config"
 )
 
 // GitHubBackend implements the Backend interface using the GitHub REST API.
