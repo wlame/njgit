@@ -16,7 +16,28 @@ Complete guide to using ndiff from the command line.
 
 When you first download ndiff, follow these steps:
 
-#### 1. Initialize Configuration
+#### 1. Initialize Git Repository
+
+ndiff uses a local Git repository that you manage. Initialize it first:
+
+```bash
+# Option A: Initialize in current directory
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
+
+# Option B: Initialize in a specific directory
+mkdir -p ~/repositories/nomad-jobs
+cd ~/repositories/nomad-jobs
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
+
+# Optional: Add a remote (for manual push/pull)
+git remote add origin git@github.com:myorg/nomad-jobs.git
+```
+
+#### 2. Initialize Configuration
 
 Run the interactive setup wizard:
 
@@ -26,9 +47,9 @@ ndiff init
 
 This will guide you through:
 - Choosing a backend (Git or GitHub API)
-- Configuring repository access
+- Configuring repository settings
 - Setting up Nomad connection
-- Adding jobs to track
+- Adding jobs to track (with regions and namespaces)
 
 Example session:
 ```
@@ -48,10 +69,39 @@ Choose a backend for storing job configurations:
 
 Select backend (git/github-api) [git]: git
 
-...
+Local path (directory containing repository) [.]: /home/user/repositories
+Repository name [ndiff-repo]: nomad-jobs
+Branch [main]: main
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 Nomad Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nomad address [http://localhost:4646]: http://nomad.example.com:4646
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Jobs to Track
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Job 1 name (empty to finish): web-app
+  Namespace [default]: production
+  Region [global]: us-east
+
+Job 2 name (empty to finish): api-server
+  Namespace [default]: production
+  Region [global]: us-east
+
+Job 3 name (empty to finish): cache
+  Namespace [default]: default
+  Region [global]: global
+
+Job 4 name (empty to finish):
+
+✅ Configuration created successfully!
+   Saved to: ndiff.toml
 ```
 
-#### 2. Verify Configuration
+#### 3. Verify Configuration
 
 Check that everything is set up correctly:
 
@@ -80,18 +130,20 @@ Example output:
 
    📋 Configuration Summary:
       Backend: git
-      Git URL: git@github.com:myorg/nomad-jobs.git
+      Local path: /home/user/repositories
+      Repository: nomad-jobs
       Branch: main
       Nomad: http://nomad.example.com:4646
-      Jobs to track: 2
+      Jobs to track: 3
 
 3️⃣  Testing Nomad connection...
    ✅ Successfully connected to Nomad
 
 4️⃣  Checking configured jobs in Nomad...
-   ✅ Job found: default/web-app
-   ✅ Job found: default/api-server
-   ✅ 2 job(s) found in Nomad
+   ✅ Job found: us-east/production/web-app
+   ✅ Job found: us-east/production/api-server
+   ✅ Job found: global/default/cache
+   ✅ 3 job(s) found in Nomad
 
 5️⃣  Testing backend connection...
    ✅ Successfully connected to backend (git)
@@ -105,7 +157,7 @@ Example output:
 ✅ All checks passed! You're ready to use ndiff.
 ```
 
-#### 3. Start Syncing
+#### 4. Start Syncing
 
 Once checks pass, start syncing your jobs:
 
@@ -142,9 +194,9 @@ ndiff init --force
 
 **What it does:**
 1. Guides you through backend selection
-2. Collects repository credentials
+2. Collects repository settings
 3. Configures Nomad connection
-4. Lets you add jobs to track
+4. Lets you add jobs to track (with regions and namespaces)
 5. Creates `ndiff.toml`
 
 ---
@@ -167,9 +219,9 @@ ndiff config show
 {
   "Git": {
     "backend": "git",
-    "url": "git@github.com:myorg/nomad-jobs.git",
-    "branch": "main",
-    "token": "********"
+    "local_path": "/home/user/repositories",
+    "repo_name": "nomad-jobs",
+    "branch": "main"
   },
   "Nomad": {
     "address": "http://localhost:4646",
@@ -178,7 +230,13 @@ ndiff config show
   "Jobs": [
     {
       "name": "web-app",
-      "namespace": "default"
+      "namespace": "production",
+      "region": "us-east"
+    },
+    {
+      "name": "cache",
+      "namespace": "default",
+      "region": "global"
     }
   ]
 }
@@ -197,9 +255,9 @@ ndiff config validate
 ```bash
 $ ndiff config validate
 ✅ Configuration is valid
-ℹ  Git repository: git@github.com:myorg/nomad-jobs.git
+ℹ  Git repository: /home/user/repositories/nomad-jobs
 ℹ  Nomad address: http://localhost:4646
-ℹ  Tracking 2 jobs
+ℹ  Tracking 3 jobs across 2 regions
 ```
 
 #### `config check`
@@ -238,7 +296,6 @@ ndiff sync [flags]
 
 **Flags:**
 - `--dry-run` - Show what would change without committing
-- `--no-push` - Commit locally but don't push to remote
 - `--jobs string` - Comma-separated list of jobs to sync (default: all)
 - `--verbose` - Show detailed output
 
@@ -254,9 +311,6 @@ ndiff sync --dry-run
 # Sync specific jobs only
 ndiff sync --jobs web-app,api-server
 
-# Commit locally but don't push
-ndiff sync --no-push
-
 # Verbose output
 ndiff sync --verbose
 ```
@@ -269,9 +323,9 @@ ndiff sync --verbose
 4. Converts to HCL format
 5. Compares with existing files
 6. For changed jobs:
-   - Writes HCL file
+   - Writes HCL file to `region/namespace/job.hcl`
    - Creates commit
-   - Pushes to remote (unless `--no-push`)
+   - Commits locally (you push manually when ready)
 
 **Output:**
 ```bash
@@ -280,18 +334,264 @@ $ ndiff sync
 ℹ  Starting sync...
 ℹ  Loading configuration...
 ℹ  Nomad: http://nomad.example.com:4646
-ℹ  Backend: git (git@github.com:myorg/nomad-jobs.git)
+ℹ  Backend: git (/home/user/repositories/nomad-jobs)
 ℹ  Connecting to Nomad...
 ✅ Connected to Nomad
 ℹ  Setting up backend...
 ✅ Backend ready (git)
-ℹ  Syncing 2 jobs...
-ℹ  Checking default/web-app...
-ℹ    default/web-app: CHANGED
-ℹ  Checking default/api-server...
+ℹ  Syncing 3 jobs...
+ℹ  Checking us-east/production/web-app...
+ℹ    us-east/production/web-app: CHANGED
+ℹ  Checking us-east/production/api-server...
+ℹ  Checking global/default/cache...
 ✅ Synced 1 jobs with changes:
-  - default/web-app
+  - us-east/production/web-app
+
+# Now you can review and push manually:
+# cd /home/user/repositories/nomad-jobs
+# git log --oneline
+# git push origin main
 ```
+
+**File Organization:**
+
+Jobs are stored in a hierarchical structure:
+```
+region/namespace/job-name.hcl
+```
+
+Example:
+```
+us-east/
+  production/
+    web-app.hcl
+    api-server.hcl
+  staging/
+    test-app.hcl
+us-west/
+  production/
+    worker.hcl
+global/
+  default/
+    cache.hcl
+```
+
+---
+
+### `ndiff deploy`
+
+Deploy a job from a specific Git commit (rollback or rollforward).
+
+**Usage:**
+```bash
+ndiff deploy [commit-hash] [flags]
+```
+
+**Flags:**
+- `--job string` - Job name (optional, auto-detected from commit if not specified)
+- `--namespace string` - Nomad namespace (default: "default")
+- `--region string` - Nomad region (default: "global")
+- `--dry-run` - Show what would be deployed without actually deploying
+
+**Examples:**
+
+```bash
+# Auto-detect job from commit (single job in commit)
+ndiff deploy abc123
+
+# Specify job explicitly
+ndiff deploy abc123 --job web-app
+
+# Specify job with namespace and region
+ndiff deploy abc123 --job web-app --namespace production --region us-east
+
+# Preview deployment without actually deploying
+ndiff deploy abc123 --job web-app --dry-run
+
+# Verbose output
+ndiff deploy abc123 --job web-app --verbose
+```
+
+**Auto-detection:**
+
+If you don't specify `--job`, ndiff will try to auto-detect it from the commit:
+- Looks at files changed in the commit
+- Filters by specified region/namespace
+- If exactly one job matches, uses it automatically
+- If multiple jobs match, prompts you to specify which one
+
+**Example auto-detection:**
+```bash
+$ ndiff deploy abc123 --namespace production --region us-east
+
+ℹ  Detecting job from commit abc123...
+✅ Auto-detected job: web-app (from us-east/production/web-app.hcl)
+ℹ  Deploying us-east/production/web-app from commit abc123...
+✅ Job deployed successfully!
+```
+
+**Example with multiple jobs:**
+```bash
+$ ndiff deploy abc123
+
+❌ Multiple jobs changed in this commit:
+  - us-east/production/web-app
+  - us-east/production/api-server
+
+Please specify which job to deploy with --job flag.
+```
+
+**How it works:**
+
+1. Fetches job specification from commit
+2. Parses region/namespace from file path: `region/namespace/job.hcl`
+3. Validates HCL syntax
+4. Connects to Nomad
+5. Submits job to correct region and namespace
+6. Reports deployment status
+
+**Use cases:**
+- **Rollback**: Deploy a previous version after a bad deployment
+- **Rollforward**: Re-deploy a specific version
+- **Testing**: Deploy historical configurations for testing
+
+---
+
+### `ndiff history`
+
+View commit history for jobs.
+
+**Usage:**
+```bash
+ndiff history [flags]
+```
+
+**Flags:**
+- `--job string` - Filter by specific job
+- `--namespace string` - Namespace (used with --job, default: "default")
+- `--region string` - Region (used with --job, default: "global")
+- `--limit int` - Maximum number of commits to show (default: 10, 0 = all)
+
+**Examples:**
+
+```bash
+# Show recent commits for all jobs
+ndiff history
+
+# Show all commits (no limit)
+ndiff history --limit 0
+
+# Show history for specific job
+ndiff history --job web-app --namespace production --region us-east
+
+# Show last 5 commits for a job
+ndiff history --job web-app --namespace production --region us-east --limit 5
+
+# Show history for job in default namespace and global region
+ndiff history --job cache
+```
+
+**Output:**
+```bash
+$ ndiff history --job web-app --namespace production --region us-east
+
+ℹ  Filtering by job: us-east/production/web-app
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📜 Commit History (10 most recent)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Commit: a1b2c3d
+Date:   2024-01-15 14:30:22
+Author: ndiff <ndiff@localhost>
+
+    Update us-east/production/web-app
+
+Files:
+  - us-east/production/web-app.hcl
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Commit: d4e5f6g
+Date:   2024-01-14 10:15:33
+Author: ndiff <ndiff@localhost>
+
+    Update us-east/production/web-app
+
+Files:
+  - us-east/production/web-app.hcl
+
+...
+```
+
+**File path format:**
+
+History shows files in the format: `region/namespace/job.hcl`
+
+This makes it easy to:
+- See which region/namespace a change belongs to
+- Use with `deploy` command
+- Understand the scope of changes
+
+---
+
+### `ndiff show`
+
+Display job configuration from a specific commit.
+
+**Usage:**
+```bash
+ndiff show [commit-hash] [flags]
+```
+
+**Flags:**
+- `--job string` - Job name to show (optional, shows all if not specified)
+- `--namespace string` - Namespace (used with --job, default: "default")
+- `--region string` - Region (used with --job, default: "global")
+
+**Examples:**
+
+```bash
+# Show all jobs changed in a commit
+ndiff show abc123
+
+# Show specific job from commit
+ndiff show abc123 --job web-app --namespace production --region us-east
+
+# Show job in default namespace and global region
+ndiff show abc123 --job cache
+```
+
+**Output:**
+```bash
+$ ndiff show abc123 --job web-app --namespace production --region us-east
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 File: us-east/production/web-app.hcl
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+job "web-app" {
+  datacenters = ["dc1"]
+  type        = "service"
+  
+  group "web" {
+    count = 3
+    
+    task "app" {
+      driver = "docker"
+      
+      config {
+        image = "myapp:v1.2.3"
+      }
+    }
+  }
+}
+```
+
+**Use cases:**
+- Review what changed in a commit
+- Compare different versions
+- Verify configuration before deploying
 
 ---
 
@@ -325,24 +625,146 @@ ndiff sync --help
 You've just installed ndiff and want to track your Nomad jobs.
 
 ```bash
-# Step 1: Create configuration
+# Step 1: Initialize Git repository
+mkdir -p ~/repositories/nomad-jobs
+cd ~/repositories/nomad-jobs
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
+
+# Optional: Add remote for backups
+git remote add origin git@github.com:myorg/nomad-jobs.git
+
+# Step 2: Create configuration
 ndiff init
 # Choose: Git backend
-# Enter: git@github.com:myorg/nomad-jobs.git
-# Auth: ssh
-# Add jobs when prompted
+# Local path: /home/user/repositories
+# Repo name: nomad-jobs
+# Add jobs with their regions and namespaces
 
-# Step 2: Verify everything works
+# Step 3: Verify everything works
 ndiff config check
 
-# Step 3: Test with dry run
+# Step 4: Test with dry run
 ndiff sync --dry-run
 
-# Step 4: Start syncing
+# Step 5: Start syncing
+ndiff sync
+
+# Step 6: Review commits and push
+cd ~/repositories/nomad-jobs
+git log --oneline
+git push origin main
+```
+
+### Scenario 2: Multi-Region Setup
+
+You have jobs in multiple Nomad regions.
+
+**Configuration** (ndiff.toml):
+```toml
+[nomad]
+address = "http://nomad.example.com:4646"
+
+[git]
+backend = "git"
+local_path = "/home/user/repositories"
+repo_name = "nomad-jobs"
+branch = "main"
+
+# US East region
+[[jobs]]
+name = "web-app"
+namespace = "production"
+region = "us-east"
+
+[[jobs]]
+name = "api-server"
+namespace = "production"
+region = "us-east"
+
+# US West region
+[[jobs]]
+name = "web-app"
+namespace = "production"
+region = "us-west"
+
+[[jobs]]
+name = "worker"
+namespace = "production"
+region = "us-west"
+
+# Global region
+[[jobs]]
+name = "cache"
+namespace = "default"
+region = "global"
+```
+
+**Sync all regions:**
+```bash
 ndiff sync
 ```
 
-### Scenario 2: CI/CD Setup (GitHub Actions)
+**Result in repository:**
+```
+us-east/
+  production/
+    web-app.hcl
+    api-server.hcl
+us-west/
+  production/
+    web-app.hcl
+    worker.hcl
+global/
+  default/
+    cache.hcl
+```
+
+**Deploy to specific region:**
+```bash
+# Deploy US East web-app
+ndiff deploy abc123 --job web-app --namespace production --region us-east
+
+# Deploy US West web-app (different region, same job name)
+ndiff deploy def456 --job web-app --namespace production --region us-west
+```
+
+**View history per region:**
+```bash
+# US East web-app history
+ndiff history --job web-app --namespace production --region us-east
+
+# US West web-app history
+ndiff history --job web-app --namespace production --region us-west
+```
+
+### Scenario 3: Rolling Back a Deployment
+
+You deployed a bad configuration and need to rollback.
+
+```bash
+# Step 1: Find the last good version
+ndiff history --job web-app --namespace production --region us-east
+
+# Output shows:
+# Commit: bad123  (current - broken)
+# Commit: good456 (last working version)
+
+# Step 2: Preview the rollback
+ndiff show good456 --job web-app --namespace production --region us-east
+
+# Step 3: Test deployment (dry run)
+ndiff deploy good456 --job web-app --namespace production --region us-east --dry-run
+
+# Step 4: Execute rollback
+ndiff deploy good456 --job web-app --namespace production --region us-east
+
+# Step 5: Verify in Nomad
+nomad job status -namespace=production web-app
+```
+
+### Scenario 4: CI/CD Setup (GitHub Actions)
 
 Setting up ndiff in GitHub Actions workflow.
 
@@ -360,6 +782,7 @@ address = "https://nomad.prod.internal:4646"
 [[jobs]]
 name = "web-app"
 namespace = "production"
+region = "us-east"
 ```
 
 **GitHub Actions workflow**:
@@ -394,73 +817,7 @@ jobs:
         run: ndiff sync
 ```
 
-### Scenario 3: Kubernetes CronJob
-
-Running ndiff as a Kubernetes CronJob.
-
-**ConfigMap** (config.yaml):
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ndiff-config
-data:
-  ndiff.toml: |
-    [git]
-    backend = "github-api"
-    owner = "myorg"
-    repo = "nomad-jobs"
-    branch = "main"
-    
-    [nomad]
-    address = "http://nomad.default.svc.cluster.local:4646"
-    
-    [[jobs]]
-    name = "web-app"
-    namespace = "default"
-```
-
-**CronJob**:
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: ndiff-sync
-spec:
-  schedule: "0 * * * *"  # Every hour
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: ndiff
-            image: myorg/ndiff:latest
-            command:
-            - /bin/sh
-            - -c
-            - |
-              # Verify config first
-              ndiff config check || exit 1
-              # Then sync
-              ndiff sync
-            env:
-            - name: GITHUB_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: github-token
-                  key: token
-            volumeMounts:
-            - name: config
-              mountPath: /config
-              readOnly: true
-          volumes:
-          - name: config
-            configMap:
-              name: ndiff-config
-          restartPolicy: OnFailure
-```
-
-### Scenario 4: Troubleshooting Connection Issues
+### Scenario 5: Troubleshooting Connection Issues
 
 You're having problems connecting to Nomad or your repository.
 
@@ -471,48 +828,27 @@ ndiff config validate
 # Step 2: Run comprehensive check
 ndiff config check
 
-# Step 3: If checks fail, check specific issues:
+# Step 3: If checks fail, debug specific issues:
 
 # For Nomad connection issues:
 export NOMAD_ADDR=http://your-nomad:4646
 export NOMAD_TOKEN=your-token
 ndiff config check
 
-# For Git authentication issues (SSH):
-ssh-add -l  # Check loaded keys
-ssh -T git@github.com  # Test GitHub SSH
+# For Git repository issues:
+cd /path/to/repository
+git status
+git log --oneline
 
-# For Git authentication issues (HTTPS):
-export GITHUB_TOKEN=ghp_yourtoken
-ndiff config check
+# If repository doesn't exist:
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
 
 # For GitHub API backend:
 export GITHUB_TOKEN=ghp_yourtoken
 curl -H "Authorization: token $GITHUB_TOKEN" \
   https://api.github.com/repos/owner/repo
-```
-
-### Scenario 5: Migrating Between Backends
-
-Switching from Git backend to GitHub API backend.
-
-```bash
-# Step 1: Backup current config
-cp ndiff.toml ndiff.toml.bak
-
-# Step 2: Create new config with GitHub API backend
-ndiff init --force
-# Choose: github-api
-# Enter GitHub owner and repo
-
-# Step 3: Verify new setup
-ndiff config check
-
-# Step 4: Test sync
-ndiff sync --dry-run
-
-# If everything works:
-ndiff sync
 ```
 
 ### Scenario 6: Adding New Jobs to Track
@@ -527,7 +863,8 @@ vim ndiff.toml
 # Add:
 # [[jobs]]
 # name = "new-job"
-# namespace = "default"
+# namespace = "production"
+# region = "us-east"
 
 # Verify
 ndiff config check
@@ -629,21 +966,30 @@ fi
 
 ## Tips and Best Practices
 
-### 1. Always Run Config Check First
+### 1. Always Initialize Git Repository First
+
+Before running ndiff:
+```bash
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
+```
+
+### 2. Always Run Config Check First
 
 After setup or configuration changes:
 ```bash
 ndiff config check
 ```
 
-### 2. Use Dry Run for Testing
+### 3. Use Dry Run for Testing
 
 Before actual sync:
 ```bash
 ndiff sync --dry-run
 ```
 
-### 3. Use Environment Variables for Secrets
+### 4. Use Environment Variables for Secrets
 
 Never commit tokens to config files:
 ```bash
@@ -655,34 +1001,48 @@ export NOMAD_TOKEN=xxx
 # token = "ghp_xxx" in config file
 ```
 
-### 4. Verbose Mode for Debugging
+### 5. Verbose Mode for Debugging
 
 When troubleshooting:
 ```bash
 ndiff --verbose sync
 ```
 
-### 5. Version Control Your Config
+### 6. Manual Push Workflow
 
-Add to `.gitignore`:
-```
-ndiff-repo/
-*.log
+With Git backend, review before pushing:
+```bash
+# Sync (commits locally)
+ndiff sync
+
+# Review
+cd /path/to/repo
+git log --oneline
+git diff origin/main
+
+# Push when ready
+git push origin main
 ```
 
-Commit your config (without secrets):
+### 7. Organize by Region/Namespace
+
+Use the hierarchical structure:
 ```
-git add ndiff.toml
-git commit -m "Add ndiff config"
+region/namespace/job.hcl
 ```
 
-### 6. CI/CD: Check Before Sync
+This makes it easy to:
+- Find jobs by region
+- Group jobs by namespace
+- Deploy to correct location
+
+### 8. CI/CD: Check Before Sync
 
 ```bash
 ndiff config check && ndiff sync
 ```
 
-### 7. Monitor Sync Failures
+### 9. Monitor Sync Failures
 
 Set up alerts for sync failures in your CI/CD system.
 
@@ -696,6 +1056,7 @@ ndiff --help
 
 # Command-specific help
 ndiff sync --help
+ndiff deploy --help
 ndiff config --help
 ```
 
@@ -716,6 +1077,7 @@ ndiff config check
 
 ```bash
 ndiff --verbose sync
+ndiff --verbose deploy abc123
 ```
 
 ### Documentation
@@ -728,20 +1090,33 @@ ndiff --verbose sync
 
 ```bash
 # First-time setup
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
 ndiff init
 ndiff config check
 ndiff sync --dry-run
 ndiff sync
 
 # Regular usage
-ndiff sync                    # Sync all jobs
-ndiff sync --jobs web-app     # Sync specific job
-ndiff sync --dry-run          # Preview changes
+ndiff sync                           # Sync all jobs
+ndiff sync --jobs web-app            # Sync specific job
+ndiff sync --dry-run                 # Preview changes
+
+# Deploy/rollback
+ndiff deploy abc123                  # Auto-detect job
+ndiff deploy abc123 --job web-app    # Specify job
+ndiff deploy abc123 --job web-app --namespace production --region us-east
+
+# History
+ndiff history                        # All jobs
+ndiff history --job web-app --namespace production --region us-east
+ndiff show abc123 --job web-app --namespace production --region us-east
 
 # Configuration
-ndiff config show             # Display config
-ndiff config validate         # Validate syntax
-ndiff config check            # Full connectivity check
+ndiff config show                    # Display config
+ndiff config validate                # Validate syntax
+ndiff config check                   # Full connectivity check
 
 # With environment variables
 export NOMAD_ADDR=http://nomad:4646
@@ -751,4 +1126,10 @@ ndiff sync
 
 # Custom config file
 ndiff --config /etc/ndiff.toml sync
+
+# Manual push workflow (Git backend)
+ndiff sync
+cd /path/to/repo
+git log --oneline
+git push origin main
 ```

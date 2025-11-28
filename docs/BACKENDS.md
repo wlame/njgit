@@ -6,7 +6,7 @@ ndiff supports two different storage backends for tracking Nomad job configurati
 
 - [Overview](#overview)
 - [Backend Comparison](#backend-comparison)
-- [Git Backend](#git-backend)
+- [Git Backend (Default)](#git-backend-default)
 - [GitHub API Backend](#github-api-backend)
 - [Switching Backends](#switching-backends)
 
@@ -16,151 +16,29 @@ A **backend** is how ndiff stores and tracks changes to your Nomad job configura
 
 ### Available Backends
 
-1. **Git Backend with Remote** (default) - Uses a local Git repository with automatic push/pull
-2. **Git Backend (Local-Only)** - Uses a local Git repository without automatic push/pull
-3. **GitHub API Backend** - Uses GitHub REST API directly (no local repository)
+1. **Git Backend** (default) - Uses a local Git repository that you manage
+2. **GitHub API Backend** - Uses GitHub REST API directly (no local repository)
 
 ## Backend Comparison
 
-| Feature | Git (Remote) | Git (Local-Only) | GitHub API |
-|---------|--------------|------------------|------------|
-| **Local Repository** | Yes (cloned) | Yes (user-initialized) | No (stateless) |
-| **Git Providers** | Any | N/A (no remote) | GitHub only |
-| **Automatic Clone** | Yes | No | N/A |
-| **Automatic Push** | Yes | No | Yes |
-| **Automatic Pull** | Yes | No | N/A |
-| **Authentication** | SSH/token required | Not needed | GitHub token required |
-| **Repository Reuse** | Yes | Yes | N/A |
-| **Offline Usage** | Commit only | Yes (fully offline) | No |
-| **User Control** | Automatic | Full manual control | Automatic |
-| **Best For** | Standard workflows | Local development | CI/CD ephemeral environments |
+| Feature | Git (Local) | GitHub API |
+|---------|-------------|------------|
+| **Local Repository** | Yes (user-managed) | No (stateless) |
+| **Git Providers** | Any (local only) | GitHub only |
+| **Automatic Push** | No (manual) | Yes |
+| **Automatic Pull** | No (manual) | N/A |
+| **Authentication** | Not needed | GitHub token required |
+| **Repository Reuse** | Yes | N/A |
+| **Offline Usage** | Yes (fully offline) | No |
+| **User Control** | Full manual control | Automatic |
+| **Multi-file Commits** | Yes | No* |
+| **Best For** | Local development, full control | CI/CD ephemeral environments |
 
 *The GitHub API doesn't support multi-file commits, so each changed job creates a separate commit.
 
-## Git Backend
+## Git Backend (Default)
 
-The **Git backend** is the default and most flexible option. It clones a Git repository to your local machine and uses standard Git operations (clone, commit, push).
-
-### Key Features
-
-- **Repository Persistence**: The Git backend checks if the repository already exists locally before cloning. If it exists, it opens the existing repository and pulls the latest changes instead of re-cloning. This makes it efficient for repeated runs.
-- **Universal Git Support**: Works with any Git provider (GitHub, GitLab, Bitbucket, self-hosted, etc.)
-- **Flexible Authentication**: Supports SSH keys, personal access tokens, or automatic detection
-- **Offline Commits**: Can commit locally even when offline (push later when online)
-
-### Configuration
-
-#### Minimal Configuration (SSH)
-
-```toml
-[git]
-backend = "git"  # Optional - "git" is the default
-url = "git@github.com:myorg/nomad-jobs.git"
-branch = "main"
-```
-
-#### HTTPS with Token
-
-```toml
-[git]
-backend = "git"
-url = "https://github.com/myorg/nomad-jobs.git"
-branch = "main"
-auth_method = "token"
-
-# Set via environment variable (recommended):
-# export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
-```
-
-#### Full Configuration Options
-
-```toml
-[git]
-backend = "git"
-url = "git@github.com:myorg/nomad-jobs.git"
-branch = "main"
-auth_method = "ssh"  # Options: "ssh", "token", "auto" (default: "auto")
-ssh_key_path = "/home/user/.ssh/id_ed25519"  # Optional - auto-detected if not specified
-local_path = "."  # Directory where repo is stored (default: current directory)
-repo_name = "ndiff-repo"  # Repository directory name (default: "ndiff-repo")
-author_name = "ndiff"
-author_email = "ndiff@localhost"
-```
-
-### Authentication Methods
-
-#### SSH (Recommended for Local Use)
-
-SSH authentication uses your SSH keys. This is the most convenient for local development.
-
-```toml
-[git]
-url = "git@github.com:myorg/nomad-jobs.git"
-auth_method = "ssh"
-```
-
-The Git backend will automatically look for SSH keys in standard locations:
-- `~/.ssh/id_ed25519`
-- `~/.ssh/id_rsa`
-- Or specify a custom path with `ssh_key_path`
-
-#### Token (Recommended for CI/CD)
-
-Token authentication uses a personal access token (PAT) or other Git token.
-
-```toml
-[git]
-url = "https://github.com/myorg/nomad-jobs.git"
-auth_method = "token"
-```
-
-Set the token via environment variable:
-```bash
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
-# Or for other Git providers:
-export GH_TOKEN="your-token-here"
-```
-
-**Never commit tokens to your config file!** Always use environment variables.
-
-#### Auto (Default)
-
-Auto-detection tries SSH first, then falls back to token if available.
-
-```toml
-[git]
-url = "git@github.com:myorg/nomad-jobs.git"
-auth_method = "auto"  # Or omit - this is the default
-```
-
-### Repository Persistence
-
-The Git backend is designed for efficiency with local repository reuse:
-
-1. **First Run**: Clones the repository to `<local_path>/<repo_name>`
-2. **Subsequent Runs**: 
-   - Checks if `.git` directory exists
-   - If yes: Opens existing repository and pulls latest changes
-   - If no: Clones a fresh copy
-3. **Cleanup**: The repository is **never** automatically deleted
-
-This means:
-- ✅ Fast subsequent runs (no re-cloning)
-- ✅ Persistent local history
-- ✅ Manual cleanup if needed (just delete the directory)
-
-### Use Cases
-
-The Git backend is ideal for:
-- Local development and testing
-- Self-hosted Git servers
-- GitLab, Bitbucket, or other non-GitHub providers
-- Environments with persistent storage
-- When you need offline commit capability
-
-## Git Backend (Local-Only Mode)
-
-The **Local-Only mode** is a variant of the Git backend for scenarios where you want complete control over the repository without any automatic remote operations.
+The **Git backend** is the default option. It uses a local Git repository that you initialize and manage yourself. The tool commits changes locally - you decide when and how to push to remote repositories.
 
 ### Key Features
 
@@ -169,20 +47,35 @@ The **Local-Only mode** is a variant of the Git backend for scenarios where you 
 - **Local Commits Only**: Changes are committed locally - you decide when to push
 - **Optional Remote**: You can configure remotes and push/pull manually whenever you want
 - **Fully Offline**: Works completely offline without any remote connectivity
+- **Multi-file Commits**: All changed jobs in a single sync are committed together
 
-### When to Use Local-Only Mode
+### When to Use Git Backend
 
-- **Local Development with Manual Control**: When you want to review commits before pushing
-- **Air-Gapped Environments**: Systems without internet access to remote Git servers
-- **Testing and Experimentation**: Test the tool without affecting remote repositories
-- **Complex Git Workflows**: When you need to handle merges, rebases, or other Git operations manually
+- **Local Development**: When you want full control over Git operations
+- **Manual Review**: Review commits before pushing to remote
+- **Any Git Provider**: Works with GitHub, GitLab, Bitbucket, self-hosted, etc.
+- **Offline Environments**: No network connectivity required
+- **Standard Git Workflows**: Use any Git commands you want
 
 ### Configuration
+
+#### Minimal Configuration
+
+```toml
+[git]
+backend = "git"  # Optional - "git" is the default
+local_path = "."  # Directory containing the repository (default: current directory)
+repo_name = "ndiff-repo"  # Repository directory name (default: "ndiff-repo")
+branch = "main"
+author_name = "ndiff"
+author_email = "ndiff@localhost"
+```
+
+#### Full Configuration Options
 
 ```toml
 [git]
 backend = "git"
-local_only = true  # Enable local-only mode
 local_path = "/home/user/repositories"  # Directory containing the repository
 repo_name = "nomad-jobs"  # Repository directory name
 branch = "main"
@@ -190,17 +83,19 @@ author_name = "ndiff"
 author_email = "bot@example.com"
 ```
 
-**Required fields**:
-- `local_only = true` - Enable local-only mode
-- `local_path` - Directory containing the repository
-- `repo_name` - Repository directory name
-- `branch` - Branch to commit to
+**All fields explained**:
+- `backend` - Always "git" for this backend (default if omitted)
+- `local_path` - Directory containing the repository (default: "." = current directory)
+- `repo_name` - Repository directory name (default: "ndiff-repo")
+- `branch` - Branch to commit to (default: "main")
+- `author_name` - Name used in Git commits
+- `author_email` - Email used in Git commits
 
-**Not required** (ignored in local-only mode):
-- `url` - No URL needed (repository is local)
-- `auth_method` - No authentication needed
-- `ssh_key_path` - Not used
-- `token` - Not used
+**Not used** (these are ignored by the Git backend):
+- `url` - Not needed (repository is local)
+- `auth_method` - Not needed (no remote operations)
+- `ssh_key_path` - Not needed
+- `token` - Not needed
 
 ### Setup Instructions
 
@@ -209,37 +104,67 @@ author_email = "bot@example.com"
 You must initialize the Git repository yourself before using ndiff:
 
 ```bash
-# Create and initialize the repository
+# Option A: Initialize in current directory
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
+
+# Then configure ndiff to use current directory
+# (default config uses "." as local_path)
+```
+
+```bash
+# Option B: Initialize in a specific directory
+mkdir -p /home/user/repositories
 cd /home/user/repositories
 git init -b main nomad-jobs
 cd nomad-jobs
-
-# Configure Git user (required for commits)
 git config user.name "ndiff"
-git config user.email "bot@example.com"
+git config user.email "ndiff@localhost"
+
+# Then configure ndiff with:
+# local_path = "/home/user/repositories"
+# repo_name = "nomad-jobs"
 ```
 
 #### 2. Optional: Add a Remote
 
-If you want to push changes manually later, configure a remote:
+If you want to push changes to a remote repository manually later:
 
 ```bash
+# For GitHub (SSH)
 git remote add origin git@github.com:myorg/nomad-jobs.git
+
+# For GitHub (HTTPS)
+git remote add origin https://github.com/myorg/nomad-jobs.git
+
+# For GitLab
+git remote add origin git@gitlab.com:myorg/nomad-jobs.git
+
+# For any other Git server
+git remote add origin git@git.example.com:path/to/repo.git
 ```
 
 #### 3. Configure ndiff
 
-Create your config with `local_only = true`:
+Create or edit `~/.config/ndiff/config.toml`:
 
 ```toml
+[nomad]
+address = "http://localhost:4646"
+
 [git]
 backend = "git"
-local_only = true
-local_path = "/home/user/repositories"
+local_path = "/home/user/repositories"  # Or "." for current directory
 repo_name = "nomad-jobs"
 branch = "main"
 author_name = "ndiff"
-author_email = "bot@example.com"
+author_email = "ndiff@localhost"
+
+[[jobs]]
+name = "my-job"
+namespace = "default"
+region = "global"
 ```
 
 #### 4. Run Sync
@@ -276,80 +201,79 @@ git diff origin/main
 git push origin main
 ```
 
-#### Example 2: Air-Gapped Environment
+#### Example 2: Fully Offline Usage
 
-For environments without internet access to remote Git servers:
-
-```bash
-# On isolated system - sync creates local commits
-ndiff sync
-
-# Bundle changes for transfer to another system
-cd /home/user/repositories/nomad-jobs
-git bundle create /mnt/usb/changes.bundle HEAD ^origin/main
-
-# On internet-connected system
-git clone /mnt/usb/changes.bundle
-cd changes
-git push github main
-```
-
-#### Example 3: Testing and Experimentation
-
-Test the tool without affecting remote repositories:
+For environments without internet access:
 
 ```bash
-# Create test repository
-git init -b main /tmp/test-repo
-cd /tmp/test-repo
-git config user.name "test"
-git config user.email "test@test.com"
+# Initialize local repository (one-time setup)
+cd /opt/nomad-tracking
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
 
-# Configure ndiff to use test repo
-# (edit config to point to /tmp/test-repo)
-
-# Experiment freely
+# Sync creates local commits (no network needed)
 ndiff sync
 
-# Inspect results
+# All history is stored locally
 git log --oneline
-
-# Clean up when done
-rm -rf /tmp/test-repo
+ndiff history
 ```
 
-### Behavior Differences
+#### Example 3: Using with Different Remotes
 
-| Operation | Remote Mode | Local-Only Mode |
-|-----------|-------------|-----------------|
-| **Repository Setup** | Automatic clone | Manual `git init` required |
-| **Before Sync** | Pulls latest changes | No pull |
-| **After Commit** | Pushes automatically | No push (stays local) |
-| **Authentication** | Required (SSH/token) | Not needed |
-| **Remote URL** | Required | Optional |
-| **Error if repo missing** | Clones automatically | Error (must exist) |
+Push to different remotes as needed:
 
-### Error Messages
+```bash
+# Add multiple remotes
+git remote add github git@github.com:myorg/nomad-jobs.git
+git remote add gitlab git@gitlab.com:myorg/nomad-jobs.git
+git remote add backup git@backup.example.com:nomad-jobs.git
 
-**"local-only mode requires existing git repository at /path"**:
-- **Cause**: Repository doesn't exist
-- **Solution**: Run `git init -b main /path` to create it
+# Push to specific remote
+git push github main
+git push gitlab main
 
-**"local_only mode is only supported with git backend"**:
-- **Cause**: Trying to use `local_only` with `github-api` backend
-- **Solution**: Set `backend = "git"`
+# Or push to all
+git remote | xargs -I {} git push {} main
+```
 
-**"local_path is required for local_only mode"**:
-- **Cause**: Missing `local_path` configuration
-- **Solution**: Add `local_path = "/path/to/repos"` to config
+### File Organization
+
+Jobs are stored in a hierarchical structure:
+
+```
+<region>/<namespace>/<job-name>.hcl
+```
+
+**Example:**
+```
+global/
+  default/
+    web-app.hcl
+    api-server.hcl
+  production/
+    worker.hcl
+us-west/
+  default/
+    cache.hcl
+```
+
+This structure:
+- Mirrors Nomad's region/namespace organization
+- Makes it easy to find specific jobs
+- Supports multi-region deployments
+- Allows namespace-specific configurations
 
 ### Advantages
 
 - ✅ **Full Control**: You decide exactly when to push/pull
 - ✅ **Offline Operation**: Works without any network connectivity
-- ✅ **No Authentication Needed**: No SSH keys or tokens required
+- ✅ **No Authentication Needed**: No SSH keys or tokens required for local commits
 - ✅ **Standard Git Workflows**: Use any Git commands you want
 - ✅ **Manual Review**: Review all commits before pushing
+- ✅ **Any Git Provider**: Works with any Git server when you push manually
+- ✅ **Multi-file Commits**: All changes in one sync → one commit
 
 ### Limitations
 
@@ -361,10 +285,20 @@ rm -rf /tmp/test-repo
 ### Best For
 
 - Local development where you want manual control over push/pull
-- Air-gapped or offline environments
+- Offline environments
 - Testing and experimentation without remote impact
 - Complex Git workflows requiring manual intervention
-- Learning and debugging
+- Any Git provider (GitHub, GitLab, Bitbucket, self-hosted, etc.)
+
+### Error Messages
+
+**"repository does not exist at /path/to/repo"**:
+- **Cause**: Repository doesn't exist
+- **Solution**: Run `git init -b main /path/to/repo` to create it
+
+**"not a git repository"**:
+- **Cause**: Directory exists but isn't a Git repository
+- **Solution**: Run `git init -b main` in that directory
 
 ## GitHub API Backend
 
@@ -375,6 +309,7 @@ The **GitHub API backend** uses the GitHub REST API directly, without maintainin
 - **Stateless**: No local repository - all operations via API
 - **CI/CD Optimized**: Perfect for ephemeral environments (Docker, Kubernetes, CI runners)
 - **Minimal Disk Usage**: Only temporary files, no Git repository
+- **Automatic Push**: Commits are immediately pushed to GitHub
 - **GitHub Only**: Requires GitHub (won't work with GitLab, Bitbucket, etc.)
 
 ### Configuration
@@ -452,6 +387,7 @@ The GitHub API backend has some limitations compared to the Git backend:
 2. **GitHub Only**: Only works with GitHub, not other Git providers
 3. **Requires Network**: Cannot work offline (no local repository)
 4. **API Rate Limits**: Subject to GitHub API rate limits (usually not a problem for typical usage)
+5. **No Local History**: No local Git repository, all operations are remote
 
 ### Use Cases
 
@@ -461,7 +397,45 @@ The GitHub API backend is ideal for:
 - CI/CD pipelines (GitHub Actions, Jenkins, etc.)
 - AWS Lambda or other serverless functions
 - Environments where disk space is limited
-- When you don't need offline capability
+- When you don't need offline capability or local history
+
+### Example: Kubernetes CronJob
+
+**Configuration:**
+```toml
+[git]
+backend = "github-api"
+owner = "myorg"
+repo = "nomad-jobs"
+branch = "main"
+```
+
+**Kubernetes Manifest:**
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ndiff-sync
+spec:
+  schedule: "0 * * * *"  # Every hour
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: ndiff
+            image: myorg/ndiff:latest
+            env:
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-token
+                  key: token
+            - name: NOMAD_ADDR
+              value: "http://nomad.default.svc.cluster.local:4646"
+            command: ["ndiff", "sync"]
+          restartPolicy: OnFailure
+```
 
 ## Switching Backends
 
@@ -473,7 +447,8 @@ You can easily switch between backends by changing the `backend` field in your c
 ```toml
 [git]
 backend = "git"
-url = "git@github.com:myorg/nomad-jobs.git"
+local_path = "/home/user/repositories"
+repo_name = "nomad-jobs"
 branch = "main"
 ```
 
@@ -503,135 +478,42 @@ branch = "main"
 ```toml
 [git]
 backend = "git"
-url = "git@github.com:myorg/nomad-jobs.git"  # Or HTTPS URL
+local_path = "/home/user/repositories"
+repo_name = "nomad-jobs"
 branch = "main"
 ```
 
-## Examples
-
-### Example 1: Local Development with SSH
-
-**Scenario**: Developer working locally with SSH keys
-
-```toml
-[git]
-backend = "git"
-url = "git@github.com:myorg/nomad-jobs.git"
-branch = "main"
-local_path = "/home/user/nomad-sync"
-repo_name = "nomad-jobs-repo"
-```
-
-**Usage**:
-```bash
-ndiff sync
-# Repository cloned to: /home/user/nomad-sync/nomad-jobs-repo
-# Subsequent runs reuse the same repository
-```
-
-### Example 2: CI/CD with Git Backend
-
-**Scenario**: Jenkins pipeline using Git with token auth
-
-```toml
-[git]
-backend = "git"
-url = "https://github.com/myorg/nomad-jobs.git"
-branch = "main"
-auth_method = "token"
-local_path = "/tmp/ndiff"
-```
-
-**Jenkins Pipeline**:
-```groovy
-pipeline {
-    environment {
-        GITHUB_TOKEN = credentials('github-token')
-    }
-    stages {
-        stage('Sync') {
-            steps {
-                sh 'ndiff sync'
-            }
-        }
-    }
-}
-```
-
-### Example 3: Kubernetes CronJob with GitHub API
-
-**Scenario**: Kubernetes CronJob running every hour (ephemeral pods)
-
-```toml
-[git]
-backend = "github-api"
-owner = "myorg"
-repo = "nomad-jobs"
-branch = "main"
-```
-
-**Kubernetes Manifest**:
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: ndiff-sync
-spec:
-  schedule: "0 * * * *"  # Every hour
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: ndiff
-            image: myorg/ndiff:latest
-            env:
-            - name: GITHUB_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: github-token
-                  key: token
-            - name: NOMAD_ADDR
-              value: "http://nomad.default.svc.cluster.local:4646"
-            command: ["ndiff", "sync"]
-          restartPolicy: OnFailure
-```
-
-### Example 4: GitLab with Git Backend
-
-**Scenario**: Using GitLab (GitHub API backend won't work)
-
-```toml
-[git]
-backend = "git"  # GitHub API backend doesn't support GitLab
-url = "https://gitlab.com/myorg/nomad-jobs.git"
-branch = "main"
-auth_method = "token"
-```
-
-**Set GitLab token**:
-```bash
-export GITHUB_TOKEN="glpat-xxxxxxxxxxxx"  # GitLab token works with Git backend
-ndiff sync
-```
+Don't forget to initialize the repository with `git init`!
 
 ## Troubleshooting
 
 ### Git Backend Issues
 
-**Problem**: `failed to clone repository: authentication required`
+**Problem**: `repository does not exist at /path`
 
-**Solution**: 
-- For SSH: Ensure your SSH key is added to your Git provider
-- For HTTPS: Set the `GITHUB_TOKEN` environment variable
-- Try `auth_method = "auto"` to let it auto-detect
+**Solution**: Initialize the Git repository:
+```bash
+cd /path
+git init -b main
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
+```
 
 **Problem**: `not a git repository`
 
-**Solution**: The Git backend expected an existing repo but didn't find one. Delete the directory and let it clone fresh:
+**Solution**: The directory exists but isn't a Git repository. Initialize it:
 ```bash
-rm -rf /path/to/repo-name
-ndiff sync
+cd /path/to/directory
+git init -b main
+```
+
+**Problem**: `failed to commit: Author identity unknown`
+
+**Solution**: Configure Git user in the repository:
+```bash
+cd /path/to/repo
+git config user.name "ndiff"
+git config user.email "ndiff@localhost"
 ```
 
 ### GitHub API Backend Issues
@@ -659,16 +541,17 @@ export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
 
 ## Best Practices
 
-1. **Use Environment Variables for Secrets**: Never commit tokens or SSH key passwords to config files
+1. **Use Environment Variables for Secrets**: Never commit tokens to config files
 2. **Choose the Right Backend**: 
-   - Git backend for local development and non-GitHub providers
+   - Git backend for local development and full control
    - GitHub API backend for ephemeral CI/CD environments
-3. **Repository Persistence**: If using Git backend, be aware it persists the repository locally - plan for disk usage
+3. **Manual Push Workflow**: With Git backend, review commits before pushing to remote
 4. **CI/CD Credentials**: Use CI/CD secret management (GitHub Secrets, Jenkins Credentials, Kubernetes Secrets)
-5. **Test Configuration**: Use `ndiff config validate` to test your configuration
+5. **Repository Initialization**: Always initialize the Git repository before first use
+6. **Regular Backups**: Even with local-only mode, consider pushing to remote for backups
 
 ## Further Reading
 
 - [Main README](../README.md) - Getting started guide
-- [Configuration Guide](../README.md#configuration) - Full configuration reference
-- [GitHub API Documentation](https://docs.github.com/en/rest) - GitHub REST API details
+- [CLI Guide](CLI_GUIDE.md) - Detailed command reference
+- [Configuration Reference](../README.md#configuration) - Full configuration options
