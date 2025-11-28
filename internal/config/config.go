@@ -30,61 +30,27 @@ type Config struct {
 // GitConfig holds Git repository configuration
 type GitConfig struct {
 	// Backend specifies which backend to use: "git" or "github-api"
-	// "git" - Uses local Git repository with go-git (supports any Git provider)
+	// "git" - Uses local Git repository (local-only, no remote operations)
 	// "github-api" - Uses GitHub REST API directly (GitHub only, no local repo)
 	// Default: "git"
 	Backend string `mapstructure:"backend"`
 
-	// === Common Configuration (both backends) ===
-
-	// Branch is the Git branch to use (default: "main")
-	Branch string `mapstructure:"branch"`
-
-	// AuthorName is the name to use in Git commits
-	AuthorName string `mapstructure:"author_name"`
-
-	// AuthorEmail is the email to use in Git commits
-	AuthorEmail string `mapstructure:"author_email"`
-
 	// === Git Backend Configuration ===
+	// Git backend is local-only: no clone/push/pull operations
+	// User must initialize the repository and manage remotes manually
 
-	// URL is the Git repository URL (SSH or HTTPS)
-	// Example: "git@github.com:org/repo.git" or "https://github.com/org/repo.git"
-	// Used by: git backend
-	URL string `mapstructure:"url"`
-
-	// LocalPath is the local directory where the Git repository is stored
-	// If the repo exists, it will be reused (pulled). If not, it will be cloned.
-	// Default: Current directory
+	// LocalPath is the path to the local Git repository
+	// The repository must already exist (user runs 'git init')
+	// Default: Current directory "."
 	// Used by: git backend
 	LocalPath string `mapstructure:"local_path"`
 
-	// RepoName is the name of the repository directory
-	// Default: "ndiff-repo"
-	// Used by: git backend
-	RepoName string `mapstructure:"repo_name"`
-
-	// AuthMethod specifies how to authenticate: "ssh", "token", or "auto"
-	// "auto" will try SSH first, then fall back to token
-	// Used by: git backend
-	AuthMethod string `mapstructure:"auth_method"`
-
-	// SSHKeyPath is the path to the SSH private key (optional)
-	// If empty, will use SSH agent or default ~/.ssh/id_ed25519, ~/.ssh/id_rsa, etc.
-	// Used by: git backend
-	SSHKeyPath string `mapstructure:"ssh_key_path"`
-
-	// LocalOnly indicates if the repository should be local-only (no remote operations)
-	// When true:
-	//   - No clone operations (user must initialize repo themselves)
-	//   - No push operations (only local commits)
-	//   - No pull operations (no remote sync)
-	//   - URL is optional (not required)
-	// Default: false
-	// Used by: git backend
-	LocalOnly bool `mapstructure:"local_only"`
-
 	// === GitHub API Backend Configuration ===
+
+	// Branch is the Git branch to use
+	// Default: "main"
+	// Used by: github-api backend
+	Branch string `mapstructure:"branch"`
 
 	// Owner is the GitHub repository owner (user or organization)
 	// Example: "myorg" for github.com/myorg/nomad-jobs
@@ -96,9 +62,17 @@ type GitConfig struct {
 	// Used by: github-api backend
 	Repo string `mapstructure:"repo"`
 
+	// AuthorName is the name to use in Git commits
+	// Used by: github-api backend
+	AuthorName string `mapstructure:"author_name"`
+
+	// AuthorEmail is the email to use in Git commits
+	// Used by: github-api backend
+	AuthorEmail string `mapstructure:"author_email"`
+
 	// Token is the GitHub personal access token for API authentication
 	// Can also be set via GITHUB_TOKEN or GH_TOKEN environment variables
-	// Required for: github-api backend, optional for git backend (HTTPS only)
+	// Used by: github-api backend
 	// IMPORTANT: For security, prefer environment variables over config file
 	Token string `mapstructure:"token"`
 }
@@ -130,6 +104,10 @@ type JobConfig struct {
 	// Namespace is the Nomad namespace the job belongs to
 	// Default is "default" if not specified
 	Namespace string `mapstructure:"namespace"`
+
+	// Region is the Nomad region the job belongs to
+	// Default is "global" if not specified
+	Region string `mapstructure:"region"`
 }
 
 // ChangesConfig holds change detection configuration
@@ -169,8 +147,8 @@ func Load(configPath string) (*Config, error) {
 	} else {
 		// Look for config file in current directory
 		v.SetConfigName("ndiff") // Name of config file (without extension)
-		v.SetConfigType("toml")            // Config file format
-		v.AddConfigPath(".")               // Look in current directory
+		v.SetConfigType("toml")  // Config file format
+		v.AddConfigPath(".")     // Look in current directory
 	}
 
 	// Enable environment variable support
@@ -218,13 +196,12 @@ func Load(configPath string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 	// Git defaults
 	v.SetDefault("git.backend", "git")
+	v.SetDefault("git.local_path", ".") // Current directory
+
+	// GitHub API backend defaults
 	v.SetDefault("git.branch", "main")
-	v.SetDefault("git.auth_method", "auto")
 	v.SetDefault("git.author_name", "ndiff")
 	v.SetDefault("git.author_email", "ndiff@localhost")
-	v.SetDefault("git.local_path", ".") // Current directory
-	v.SetDefault("git.repo_name", "ndiff-repo")
-	v.SetDefault("git.local_only", false)
 
 	// Nomad defaults
 	// No defaults for address or token - these must be provided
@@ -275,10 +252,13 @@ func applyEnvOverrides(cfg *Config) {
 		}
 	}
 
-	// Apply defaults to job namespaces if not set
+	// Apply defaults to job namespaces and regions if not set
 	for i := range cfg.Jobs {
 		if cfg.Jobs[i].Namespace == "" {
 			cfg.Jobs[i].Namespace = "default"
+		}
+		if cfg.Jobs[i].Region == "" {
+			cfg.Jobs[i].Region = "global"
 		}
 	}
 }

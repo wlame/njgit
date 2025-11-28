@@ -112,7 +112,7 @@ func (c *Client) clone() (*Repository, error) {
 	// These control how the repository is cloned
 	cloneOpts := &git.CloneOptions{
 		// URL of the repository to clone
-		URL: c.config.URL,
+		URL: "", // Deprecated: git backend is local-only
 
 		// Authentication method (SSH or token)
 		Auth: c.auth,
@@ -139,7 +139,7 @@ func (c *Client) clone() (*Repository, error) {
 	// Perform the clone
 	repo, err := git.PlainClone(c.workDir, false, cloneOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to clone repository %s: %w", c.config.URL, err)
+		return nil, fmt.Errorf("failed to clone repository: %w", err)
 	}
 
 	return &Repository{
@@ -240,7 +240,7 @@ func (c *Client) Clone(destPath string) (*Repository, error) {
 
 	// Prepare clone options
 	cloneOpts := &git.CloneOptions{
-		URL:           c.config.URL,
+		URL:           "", // Deprecated: git backend is local-only
 		Auth:          c.auth,
 		ReferenceName: plumbing.NewBranchReferenceName(c.config.Branch),
 		SingleBranch:  true,
@@ -251,7 +251,7 @@ func (c *Client) Clone(destPath string) (*Repository, error) {
 	// Perform the clone
 	repo, err := git.PlainClone(destPath, false, cloneOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to clone repository %s to %s: %w", c.config.URL, destPath, err)
+		return nil, fmt.Errorf("failed to clone repository to %s: %w", destPath, err)
 	}
 
 	return &Repository{
@@ -268,8 +268,9 @@ func (c *Client) WorkDir() string {
 }
 
 // URL returns the repository URL
+// Deprecated: git backend is local-only
 func (c *Client) URL() string {
-	return c.config.URL
+	return "" // Deprecated
 }
 
 // Branch returns the configured branch name

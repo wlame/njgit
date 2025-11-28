@@ -62,8 +62,8 @@ func (r *Repository) StageAll() error {
 //
 // Parameters:
 //   - message: Commit message
-//   - author: Author name (e.g., "ndiff")
-//   - email: Author email (e.g., "bot@example.com")
+//   - author: Author name (empty string to use git config user.name)
+//   - email: Author email (empty string to use git config user.email)
 //
 // Returns:
 //   - string: The commit hash (SHA)
@@ -76,14 +76,16 @@ func (r *Repository) Commit(message, author, email string) (string, error) {
 	}
 
 	// Create the commit options
-	// The Author field identifies who made the commit
-	// The When field is the commit timestamp
-	commitOpts := &git.CommitOptions{
-		Author: &object.Signature{
+	commitOpts := &git.CommitOptions{}
+
+	// Only set author if both name and email are provided
+	// If empty, go-git will use the repository's git config
+	if author != "" && email != "" {
+		commitOpts.Author = &object.Signature{
 			Name:  author,
 			Email: email,
 			When:  time.Now(),
-		},
+		}
 	}
 
 	// Create the commit

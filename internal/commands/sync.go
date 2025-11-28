@@ -87,7 +87,7 @@ func syncRun(cmd *cobra.Command, args []string) error {
 		backendType = "git"
 	}
 	if backendType == "git" {
-		PrintInfo(fmt.Sprintf("Backend: git (%s)", cfg.Git.URL))
+		PrintInfo(fmt.Sprintf("Backend: git (local: %s)", cfg.Git.LocalPath))
 	} else {
 		PrintInfo(fmt.Sprintf("Backend: github-api (%s/%s)", cfg.Git.Owner, cfg.Git.Repo))
 	}
@@ -180,7 +180,7 @@ func performSync(cfg *config.Config, nomadClient *nomad.Client, backend backend.
 // syncJob syncs a single job
 // Returns true if the job changed, false otherwise
 func syncJob(cfg *config.Config, nomadClient *nomad.Client, backend backend.Backend, jobCfg config.JobConfig) (bool, error) {
-	jobPath := fmt.Sprintf("%s/%s", jobCfg.Namespace, jobCfg.Name)
+	jobPath := fmt.Sprintf("%s/%s/%s", jobCfg.Region, jobCfg.Namespace, jobCfg.Name)
 	PrintInfo(fmt.Sprintf("Checking %s...", jobPath))
 
 	// 1. Fetch job from Nomad
@@ -207,7 +207,7 @@ func syncJob(cfg *config.Config, nomadClient *nomad.Client, backend backend.Back
 	hclBytes = hcl.NormalizeHCL(hclBytes)
 
 	// 4. Check if file exists and compare
-	filePath := filepath.Join(jobCfg.Namespace, jobCfg.Name+".hcl")
+	filePath := filepath.Join(jobCfg.Region, jobCfg.Namespace, jobCfg.Name+".hcl")
 	fileExists, err := backend.FileExists(filePath)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if file exists: %w", err)

@@ -11,24 +11,23 @@ import (
 )
 
 // GitBackend implements the Backend interface using a local Git repository
-// This backend clones and maintains a local Git repository on disk
+// This backend works with an existing local Git repository only
 //
 // Key features:
-//   - Supports any Git provider (GitHub, GitLab, Bitbucket, self-hosted)
-//   - Reuses local repository across runs (no re-cloning)
-//   - Supports SSH keys and tokens
-//   - Standard Git workflow
+//   - Local-only operation (no remote operations)
+//   - User manages repository initialization (git init)
+//   - User manages remotes and push/pull manually
+//   - Uses git config for author name/email
 type GitBackend struct {
 	config      *config.GitConfig
-	client      *gitpkg.Client
 	repository  *gitpkg.Repository
-	localPath   string   // Full path to local repo (e.g., "./ndiff-repo")
+	localPath   string   // Path to local repo (e.g., ".")
 	stagedFiles []string // Files staged for commit
 }
 
 // NewGitBackend creates a new Git backend instance
-// This validates the configuration but does NOT clone/open the repository yet
-// Call Initialize() to actually set up the repository
+// This validates the configuration but does NOT open the repository yet
+// Call Initialize() to actually open the repository
 //
 // Parameters:
 //
@@ -39,28 +38,21 @@ type GitBackend struct {
 //	*GitBackend - The backend instance
 //	error - Any validation errors
 func NewGitBackend(cfg *config.GitConfig) (*GitBackend, error) {
-	// Validate required configuration
-	// URL is only required for remote mode
-	if !cfg.LocalOnly && cfg.URL == "" {
-		return nil, fmt.Errorf("git.url is required for git backend (or set local_only = true)")
+	// LocalPath is required and must point to existing Git repository
+	if cfg.LocalPath == "" {
+		return nil, fmt.Errorf("git.local_path is required for git backend")
 	}
-
-	// Determine full local path where the repo will be stored
-	// LocalPath defaults to "." (current directory)
-	// RepoName defaults to "ndiff-repo"
-	localPath := filepath.Join(cfg.LocalPath, cfg.RepoName)
 
 	return &GitBackend{
 		config:      cfg,
-		localPath:   localPath,
+		localPath:   cfg.LocalPath,
 		stagedFiles: make([]string, 0),
 	}, nil
 }
 
 // Initialize prepares the Git backend for use
-// Behavior depends on local_only configuration:
-//   - Local-only mode: Opens existing repository (must already exist)
-//   - Remote mode: Opens existing repository and pulls, or clones if doesn't exist
+// Opens the existing local Git repository
+// The repository must already exist (user runs 'git init')
 //
 // Returns:
 //
@@ -71,47 +63,21 @@ func (g *GitBackend) Initialize() error {
 	stat, err := os.Stat(gitDir)
 	repoExists := err == nil && stat.IsDir()
 
-	if g.config.LocalOnly {
-		// Local-only mode: repository MUST exist
-		if !repoExists {
-			return fmt.Errorf("local-only mode requires existing git repository at %s (run 'git init' first)", g.localPath)
-		}
-
-		// Open the existing repository (no client needed for local-only)
-		g.repository, err = gitpkg.NewLocalRepository(g.localPath)
-		if err != nil {
-			return fmt.Errorf("failed to open local repository at %s: %w", g.localPath, err)
-		}
-
-		fmt.Printf("📁 Using local-only repository at: %s\n", g.localPath)
-		return nil
+	if !repoExists {
+		return fmt.Errorf("git repository not found at %s\n\n"+
+			"Please initialize a Git repository first:\n"+
+			"  cd %s\n"+
+			"  git init\n\n"+
+			"Then run ndiff again.", g.localPath, g.localPath)
 	}
 
-	// Remote mode: create Git client for clone/push operations
-	g.client, err = gitpkg.NewClient(g.config)
+	// Open the existing repository
+	g.repository, err = gitpkg.NewLocalRepository(g.localPath)
 	if err != nil {
-		return fmt.Errorf("failed to create git client: %w", err)
+		return fmt.Errorf("failed to open local repository at %s: %w", g.localPath, err)
 	}
 
-	if repoExists {
-		// Repository exists locally - open it
-		g.repository, err = g.client.Open(g.localPath)
-		if err != nil {
-			return fmt.Errorf("failed to open existing repository at %s: %w", g.localPath, err)
-		}
-
-		// Pull latest changes from remote
-		if err := g.repository.Pull(); err != nil {
-			return fmt.Errorf("failed to pull latest changes: %w", err)
-		}
-	} else {
-		// Repository doesn't exist - clone it
-		g.repository, err = g.client.Clone(g.localPath)
-		if err != nil {
-			return fmt.Errorf("failed to clone repository: %w", err)
-		}
-	}
-
+	fmt.Printf("📁 Using local repository at: %s\n", g.localPath)
 	return nil
 }
 
@@ -176,6 +142,7 @@ func (g *GitBackend) FileExists(path string) (bool, error) {
 
 // Commit creates a Git commit with all staged files
 // This commits all files that were written since the last Commit() call
+// Author name/email are taken from git config (user must configure)
 //
 // Parameters:
 //
@@ -193,12 +160,8 @@ func (g *GitBackend) Commit(message string) (string, error) {
 		}
 	}
 
-	// Create the commit
-	hash, err := g.repository.Commit(
-		message,
-		g.config.AuthorName,
-		g.config.AuthorEmail,
-	)
+	// Create the commit (uses git config for author)
+	hash, err := g.repository.Commit(message, "", "")
 	if err != nil {
 		return "", fmt.Errorf("failed to create commit: %w", err)
 	}
@@ -213,22 +176,15 @@ func (g *GitBackend) Commit(message string) (string, error) {
 	return hash, nil
 }
 
-// Push pushes all commits to the remote repository
-// In local-only mode, this is a no-op
+// Push is a no-op for local Git backend
+// User must manually push to remote using git commands
 //
 // Returns:
 //
-//	error - Any error that occurred
+//	error - Always returns nil
 func (g *GitBackend) Push() error {
-	// Skip push in local-only mode
-	if g.config.LocalOnly {
-		fmt.Println("⏭️  Skipping push (local-only mode)")
-		return nil
-	}
-
-	if err := g.repository.Push(); err != nil {
-		return fmt.Errorf("failed to push to remote: %w", err)
-	}
+	// Git backend is local-only - no push operation
+	// User manages remotes and push/pull manually
 	return nil
 }
 
@@ -249,12 +205,9 @@ func (g *GitBackend) Close() error {
 //
 // Returns:
 //
-//	string - Backend name with repository URL or local path
+//	string - Backend name with local path
 func (g *GitBackend) GetName() string {
-	if g.config.LocalOnly {
-		return fmt.Sprintf("Git (local-only: %s)", g.localPath)
-	}
-	return fmt.Sprintf("Git (%s)", g.config.URL)
+	return fmt.Sprintf("Git (local: %s)", g.localPath)
 }
 
 // GetRepository returns the underlying Git repository

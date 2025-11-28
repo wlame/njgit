@@ -14,6 +14,7 @@ import (
 var (
 	historyJob       string
 	historyNamespace string
+	historyRegion    string
 	historyLimit     int
 )
 
@@ -48,6 +49,7 @@ Examples:
 func init() {
 	historyCmd.Flags().StringVar(&historyJob, "job", "", "Filter by job name")
 	historyCmd.Flags().StringVar(&historyNamespace, "namespace", "default", "Job namespace (used with --job)")
+	historyCmd.Flags().StringVar(&historyRegion, "region", "global", "Job region (used with --job)")
 	historyCmd.Flags().IntVar(&historyLimit, "limit", 20, "Maximum number of commits to show (0 for unlimited)")
 
 	rootCmd.AddCommand(historyCmd)
@@ -78,17 +80,10 @@ func historyRun(cmd *cobra.Command, args []string) error {
 func showGitHistory(cfg *config.Config) error {
 	PrintInfo("Loading Git repository history...")
 
-	// Create Git client
-	gitClient, err := gitpkg.NewClient(&cfg.Git)
+	// Open local repository
+	repo, err := gitpkg.NewLocalRepository(cfg.Git.LocalPath)
 	if err != nil {
-		return fmt.Errorf("failed to create Git client: %w", err)
-	}
-	defer gitClient.Close()
-
-	// Open or clone repository
-	repo, err := gitClient.OpenOrClone()
-	if err != nil {
-		return fmt.Errorf("failed to open repository: %w", err)
+		return fmt.Errorf("failed to open repository at %s: %w", cfg.Git.LocalPath, err)
 	}
 
 	// Build file path filter if job specified
@@ -97,8 +92,11 @@ func showGitHistory(cfg *config.Config) error {
 		if historyNamespace == "" {
 			historyNamespace = "default"
 		}
-		filePath = filepath.Join(historyNamespace, historyJob+".hcl")
-		PrintInfo(fmt.Sprintf("Filtering by job: %s/%s", historyNamespace, historyJob))
+		if historyRegion == "" {
+			historyRegion = "global"
+		}
+		filePath = filepath.Join(historyRegion, historyNamespace, historyJob+".hcl")
+		PrintInfo(fmt.Sprintf("Filtering by job: %s/%s/%s", historyRegion, historyNamespace, historyJob))
 	}
 
 	// Get history

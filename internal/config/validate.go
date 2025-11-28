@@ -50,43 +50,15 @@ func (g *GitConfig) Validate() error {
 			backend, strings.Join(validBackends, ", "))
 	}
 
-	// Local-only mode is only supported with git backend
-	if g.LocalOnly && backend != "git" {
-		return fmt.Errorf("local_only mode is only supported with git backend (not %s)", backend)
-	}
-
 	// Validate based on backend type
 	if backend == "git" {
-		// In local-only mode, URL is optional
-		if !g.LocalOnly {
-			// Git backend requires URL for remote mode
-			if g.URL == "" {
-				return fmt.Errorf("url is required for git backend (or set local_only = true)")
-			}
-
-			// Validate URL format
-			// It should be either SSH (git@github.com:user/repo.git) or HTTPS (https://github.com/user/repo.git)
-			if !isValidGitURL(g.URL) {
-				return fmt.Errorf("invalid git URL: %s (must be SSH or HTTPS format)", g.URL)
-			}
-
-			// Validate auth method (only needed for remote mode)
-			validAuthMethods := []string{"ssh", "token", "auto"}
-			if g.AuthMethod != "" && !contains(validAuthMethods, g.AuthMethod) {
-				return fmt.Errorf("invalid auth_method: %s (must be one of: %s)",
-					g.AuthMethod, strings.Join(validAuthMethods, ", "))
-			}
-		} else {
-			// Local-only mode specific validations
-			if g.LocalPath == "" {
-				return fmt.Errorf("local_path is required for local_only mode")
-			}
-			if g.RepoName == "" {
-				return fmt.Errorf("repo_name is required for local_only mode")
-			}
+		// Git backend is local-only
+		// Requires local_path to point to an existing git repository
+		if g.LocalPath == "" {
+			return fmt.Errorf("local_path is required for git backend")
 		}
 	} else if backend == "github-api" {
-		// GitHub API backend requires owner and repo
+		// GitHub API backend requires owner, repo, and token
 		if g.Owner == "" {
 			return fmt.Errorf("owner is required for github-api backend")
 		}
@@ -96,19 +68,19 @@ func (g *GitConfig) Validate() error {
 		if g.Token == "" {
 			return fmt.Errorf("token is required for github-api backend (set via GITHUB_TOKEN or GH_TOKEN env var)")
 		}
-	}
 
-	// Branch is required (though we set a default, double-check)
-	if g.Branch == "" {
-		return fmt.Errorf("branch is required")
-	}
+		// Branch is required for GitHub API backend
+		if g.Branch == "" {
+			return fmt.Errorf("branch is required for github-api backend")
+		}
 
-	// AuthorName and AuthorEmail should be set (we have defaults, but validate they're not empty)
-	if g.AuthorName == "" {
-		return fmt.Errorf("author_name is required")
-	}
-	if g.AuthorEmail == "" {
-		return fmt.Errorf("author_email is required")
+		// AuthorName and AuthorEmail should be set for GitHub API backend
+		if g.AuthorName == "" {
+			return fmt.Errorf("author_name is required for github-api backend")
+		}
+		if g.AuthorEmail == "" {
+			return fmt.Errorf("author_email is required for github-api backend")
+		}
 	}
 
 	return nil

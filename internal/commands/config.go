@@ -71,7 +71,16 @@ var configValidateCmd = &cobra.Command{
 		}
 
 		PrintSuccess("Configuration is valid")
-		PrintInfo(fmt.Sprintf("Git repository: %s", cfg.Git.URL))
+
+		backendType := cfg.Git.Backend
+		if backendType == "" {
+			backendType = "git"
+		}
+		if backendType == "git" {
+			PrintInfo(fmt.Sprintf("Git repository: %s (local)", cfg.Git.LocalPath))
+		} else {
+			PrintInfo(fmt.Sprintf("GitHub repository: %s/%s", cfg.Git.Owner, cfg.Git.Repo))
+		}
 		PrintInfo(fmt.Sprintf("Nomad address: %s", cfg.Nomad.Address))
 		PrintInfo(fmt.Sprintf("Tracking %d jobs", len(cfg.Jobs)))
 
@@ -148,8 +157,7 @@ func configCheckRun(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("      Backend: %s\n", backendType)
 	if backendType == "git" {
-		fmt.Printf("      Git URL: %s\n", cfg.Git.URL)
-		fmt.Printf("      Branch: %s\n", cfg.Git.Branch)
+		fmt.Printf("      Local path: %s\n", cfg.Git.LocalPath)
 	} else {
 		fmt.Printf("      GitHub: %s/%s\n", cfg.Git.Owner, cfg.Git.Repo)
 		fmt.Printf("      Branch: %s\n", cfg.Git.Branch)

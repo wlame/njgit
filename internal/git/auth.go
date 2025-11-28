@@ -13,55 +13,50 @@ import (
 	"github.com/wlame/ndiff/internal/config"
 )
 
-// ResolveAuth determines the appropriate Git authentication method
-// based on the configuration and repository URL.
-//
-// Authentication precedence:
-//  1. Config file settings (git.ssh_key_path, git.github_token)
-//  2. Environment variables (GITHUB_TOKEN, GH_TOKEN)
-//  3. SSH agent (for SSH URLs)
-//  4. Default SSH keys (~/.ssh/id_rsa, etc.)
-//
-// The auth_method config setting controls the strategy:
-//   - "ssh": Use SSH keys only
-//   - "token": Use HTTPS token only
-//   - "auto": Try SSH first, fall back to token
+// ResolveAuth is a stub for backward compatibility
+// Git backend is now local-only and doesn't require authentication
+// This function is kept for tests only
 //
 // Parameters:
 //   - cfg: Git configuration from config file
 //
 // Returns:
-//   - transport.AuthMethod: The authentication method to use
-//   - error: Any error encountered during auth resolution
+//   - transport.AuthMethod: Always returns nil (no auth needed)
+//   - error: Always returns nil
 func ResolveAuth(cfg *config.GitConfig) (transport.AuthMethod, error) {
-	switch cfg.AuthMethod {
-	case "ssh":
-		// Explicit SSH authentication
+	// Git backend is local-only, no authentication needed
+	return nil, nil
+}
+
+// ResolveAuthWithMethod is a stub for backward compatibility (used by tests)
+func ResolveAuthWithMethod(cfg *config.GitConfig, method string) (transport.AuthMethod, error) {
+	// For tests that need actual authentication, implement as needed
+	if method == "ssh" {
 		return ResolveSSHAuth(cfg)
-
-	case "token":
-		// Explicit token authentication
-		return ResolveTokenAuth(cfg)
-
-	case "auto":
-		// Try SSH first (common for developers)
-		auth, err := ResolveSSHAuth(cfg)
-		if err == nil {
-			return auth, nil
-		}
-
-		// SSH failed, try token (common for CI/CD)
-		auth, err = ResolveTokenAuth(cfg)
-		if err == nil {
-			return auth, nil
-		}
-
-		// Both failed
-		return nil, fmt.Errorf("failed to resolve authentication (tried SSH and token)")
-
-	default:
-		return nil, fmt.Errorf("unknown auth method: %s (use 'ssh', 'token', or 'auto')", cfg.AuthMethod)
 	}
+	if method == "token" {
+		return ResolveTokenAuth(cfg)
+	}
+
+	return nil, nil
+}
+
+// Legacy function kept for compatibility
+func resolveAuthLegacy(cfg *config.GitConfig) (transport.AuthMethod, error) {
+	// Try SSH first (common for developers)
+	auth, err := ResolveSSHAuth(cfg)
+	if err == nil {
+		return auth, nil
+	}
+
+	// SSH failed, try token (common for CI/CD)
+	auth, err = ResolveTokenAuth(cfg)
+	if err == nil {
+		return auth, nil
+	}
+
+	// Both failed
+	return nil, fmt.Errorf("failed to resolve authentication (tried SSH and token)")
 }
 
 // ResolveSSHAuth creates SSH-based authentication
@@ -89,18 +84,11 @@ func ResolveSSHAuth(cfg *config.GitConfig) (transport.AuthMethod, error) {
 	}
 
 	// SSH agent not available, try key files
-	var keyPath string
-
-	if cfg.SSHKeyPath != "" {
-		// Explicit key path from config
-		keyPath = cfg.SSHKeyPath
-	} else {
-		// Try default SSH key locations
-		// This checks for common SSH key types
-		keyPath, err = findDefaultSSHKey()
-		if err != nil {
-			return nil, fmt.Errorf("SSH key not found: %w", err)
-		}
+	// Try default SSH key locations
+	// This checks for common SSH key types
+	keyPath, err := findDefaultSSHKey()
+	if err != nil {
+		return nil, fmt.Errorf("SSH key not found: %w", err)
 	}
 
 	// Expand ~ to home directory if present

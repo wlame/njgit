@@ -193,25 +193,12 @@ func TestGitRepository(t *testing.T) {
 
 	t.Log("✅ Initialized bare repo with initial commit")
 
-	// Create Git config
-	cfg := &config.GitConfig{
-		URL:         fmt.Sprintf("file://%s", remoteDir),
-		Branch:      "master", // Use master to match the branch we created
-		AuthMethod:  "auto",
-		AuthorName:  "test-bot",
-		AuthorEmail: "test@example.com",
-	}
-
-	// Create Git client
-	client, err := gitpkg.NewClient(cfg)
-	require.NoError(t, err)
-	defer client.Close()
-
-	// Clone the repository
-	repo, err := client.OpenOrClone()
+	// Open the working directory as a local repository
+	// (In the new local-only mode, we work directly with the git repo)
+	repo, err := gitpkg.NewLocalRepository(workDir)
 	require.NoError(t, err)
 
-	t.Log("✅ Cloned repository")
+	t.Log("✅ Opened local repository")
 
 	// Write a test file
 	err = repo.WriteFile("test.txt", []byte("Hello, World!"))
@@ -305,17 +292,8 @@ func TestFullSyncWorkflow(t *testing.T) {
 	require.NoError(t, err)
 	defer nomadClient.Close()
 
-	gitClient, err := gitpkg.NewClient(&config.GitConfig{
-		URL:         fmt.Sprintf("file://%s", remoteDir),
-		Branch:      "master", // Use master to match the branch we created
-		AuthMethod:  "auto",
-		AuthorName:  "ndiff-test",
-		AuthorEmail: "test@example.com",
-	})
-	require.NoError(t, err)
-	defer gitClient.Close()
-
-	repo, err := gitClient.OpenOrClone()
+	// Open local repository directly (local-only mode)
+	repo, err := gitpkg.NewLocalRepository(workDir)
 	require.NoError(t, err)
 
 	// 5. Fetch job from Nomad
@@ -579,59 +557,41 @@ func TestHistoryAndDeploy(t *testing.T) {
 	}
 	t.Log("Deployed job version 1")
 
-	// Create Git remote and local repos
-	remoteDir, err := os.MkdirTemp("", "ndiff-remote-*")
-	if err != nil {
-		t.Fatalf("Failed to create remote dir: %v", err)
-	}
-	defer os.RemoveAll(remoteDir)
-
+	// Create local Git repo (local-only mode)
 	localDir, err := os.MkdirTemp("", "ndiff-local-*")
 	if err != nil {
 		t.Fatalf("Failed to create local dir: %v", err)
 	}
 	defer os.RemoveAll(localDir)
 
-	t.Logf("Git remote at: %s", remoteDir)
+	t.Logf("Git local repo at: %s", localDir)
 
-	// Initialize bare Git repo
-	cmd := exec.Command("git", "init", "--bare", "--initial-branch=main", remoteDir)
+	// Initialize local Git repo
+	cmd := exec.Command("git", "init", "--initial-branch=main", localDir)
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to init bare repo: %v", err)
+		t.Fatalf("Failed to init local repo: %v", err)
 	}
 
-	// Create initial commit in bare repo
-	tmpDir, err := os.MkdirTemp("", "git-init-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	// Configure git user for this repo
+	exec.Command("git", "-C", localDir, "config", "user.email", "test@test.com").Run()
+	exec.Command("git", "-C", localDir, "config", "user.name", "test").Run()
 
-	exec.Command("git", "clone", remoteDir, tmpDir).Run()
-	exec.Command("git", "-C", tmpDir, "config", "user.email", "test@test.com").Run()
-	exec.Command("git", "-C", tmpDir, "config", "user.name", "test").Run()
-	os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# Test"), 0644)
-	exec.Command("git", "-C", tmpDir, "add", ".").Run()
-	exec.Command("git", "-C", tmpDir, "commit", "-m", "Initial commit").Run()
-	exec.Command("git", "-C", tmpDir, "push", "origin", "main").Run()
+	// Create initial commit
+	os.WriteFile(filepath.Join(localDir, "README.md"), []byte("# Test"), 0644)
+	exec.Command("git", "-C", localDir, "add", ".").Run()
+	exec.Command("git", "-C", localDir, "commit", "-m", "Initial commit").Run()
 
-	// Create config
+	// Create config (simplified for local-only git backend)
 	cfg := &config.Config{
 		Git: config.GitConfig{
-			Backend:     "git",
-			URL:         remoteDir,
-			Branch:      "main",
-			AuthMethod:  "auto",
-			LocalPath:   localDir,
-			RepoName:    "test-repo",
-			AuthorName:  "test",
-			AuthorEmail: "test@test.com",
+			Backend:   "git",
+			LocalPath: localDir,
 		},
 		Nomad: config.NomadConfig{
 			Address: nomadAddr,
 		},
 		Jobs: []config.JobConfig{
-			{Name: "rollback-test", Namespace: "default"},
+			{Name: "rollback-test", Namespace: "default", Region: "global"},
 		},
 	}
 
@@ -668,7 +628,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 		t.Fatalf("Failed to format HCL: %v", err)
 	}
 
-	if err := backend.WriteFile("default/rollback-test.hcl", hclBytes); err != nil {
+	if err := backend.WriteFile("global/default/rollback-test.hcl", hclBytes); err != nil {
 		t.Fatalf("Failed to write file: %v", err)
 	}
 
@@ -711,7 +671,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 		t.Fatalf("Failed to format HCL v2: %v", err)
 	}
 
-	if err := backend.WriteFile("default/rollback-test.hcl", hclBytes); err != nil {
+	if err := backend.WriteFile("global/default/rollback-test.hcl", hclBytes); err != nil {
 		t.Fatalf("Failed to write file v2: %v", err)
 	}
 
@@ -726,24 +686,14 @@ func TestHistoryAndDeploy(t *testing.T) {
 
 	t.Logf("✅ Committed version 2: %s", commitV2)
 
-	// Now test history retrieval
-	// We need to open the repository to access history
-	// Use the same config to ensure we're accessing the same repo
-	gitClient, err := gitpkg.NewClient(&cfg.Git)
-	if err != nil {
-		t.Fatalf("Failed to create git client: %v", err)
-	}
-	defer gitClient.Close()
-
-	// Open the existing repository (should not re-clone)
-	repoPath := filepath.Join(cfg.Git.LocalPath, cfg.Git.RepoName)
-	repo, err := gitClient.Open(repoPath)
+	// Now test history retrieval by opening the repository
+	repo, err := gitpkg.NewLocalRepository(cfg.Git.LocalPath)
 	if err != nil {
 		t.Fatalf("Failed to open repo: %v", err)
 	}
 
 	// Get history
-	commits, err := repo.GetHistory("default/rollback-test.hcl", 0)
+	commits, err := repo.GetHistory("global/default/rollback-test.hcl", 0)
 	if err != nil {
 		t.Fatalf("Failed to get history: %v", err)
 	}
@@ -763,7 +713,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 	t.Logf("Previous commit: %s - %s", secondCommit.Hash, secondCommit.Message)
 
 	// Get file content from v1 commit
-	v1Content, err := repo.GetFileAtCommit(secondCommit.FullHash, "default/rollback-test.hcl")
+	v1Content, err := repo.GetFileAtCommit(secondCommit.FullHash, "global/default/rollback-test.hcl")
 	if err != nil {
 		t.Fatalf("Failed to get file at v1 commit: %v", err)
 	}

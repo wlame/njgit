@@ -13,6 +13,7 @@ import (
 
 var (
 	deployNamespace string
+	deployRegion    string
 	deployDryRun    bool
 )
 
@@ -61,6 +62,7 @@ Workflow:
 
 func init() {
 	deployCmd.Flags().StringVar(&deployNamespace, "namespace", "default", "Nomad namespace")
+	deployCmd.Flags().StringVar(&deployRegion, "region", "global", "Nomad region")
 	deployCmd.Flags().BoolVar(&deployDryRun, "dry-run", false, "Show what would be deployed without actually deploying")
 
 	rootCmd.AddCommand(deployCmd)
@@ -78,6 +80,9 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	if deployNamespace == "" {
 		deployNamespace = "default"
 	}
+	if deployRegion == "" {
+		deployRegion = "global"
+	}
 
 	// Load configuration
 	cfg, err := config.Load(GetConfigFile())
@@ -88,7 +93,7 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	// Auto-detect job name if not provided
 	if jobName == "" {
 		PrintInfo(fmt.Sprintf("Auto-detecting job name from commit %s...", commitHash))
-		detectedJob, err := detectJobFromCommit(cfg, commitHash, deployNamespace)
+		detectedJob, err := detectJobFromCommit(cfg, commitHash, deployRegion, deployNamespace)
 		if err != nil {
 			return err
 		}
@@ -97,9 +102,9 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get job HCL from the commit
-	PrintInfo(fmt.Sprintf("Loading job %s/%s from commit %s...", deployNamespace, jobName, commitHash))
+	PrintInfo(fmt.Sprintf("Loading job %s/%s/%s from commit %s...", deployRegion, deployNamespace, jobName, commitHash))
 
-	jobHCL, err := getJobFromCommit(cfg, commitHash, deployNamespace, jobName)
+	jobHCL, err := getJobFromCommit(cfg, commitHash, deployRegion, deployNamespace, jobName)
 	if err != nil {
 		return err
 	}
@@ -180,7 +185,7 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (string, error) {
+func detectJobFromCommit(cfg *config.Config, commitHash, region, namespace string) (string, error) {
 	// Check backend type
 	backendType := cfg.Git.Backend
 	if backendType == "" {
@@ -193,17 +198,10 @@ func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (stri
 			"  ndiff deploy %s <job-name>", commitHash)
 	}
 
-	// Create Git client
-	gitClient, err := gitpkg.NewClient(&cfg.Git)
+	// Open local repository
+	repo, err := gitpkg.NewLocalRepository(cfg.Git.LocalPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to create Git client: %w", err)
-	}
-	defer gitClient.Close()
-
-	// Open repository
-	repo, err := gitClient.OpenOrClone()
-	if err != nil {
-		return "", fmt.Errorf("failed to open repository: %w", err)
+		return "", fmt.Errorf("failed to open repository at %s: %w", cfg.Git.LocalPath, err)
 	}
 
 	// Get commits to find full hash and commit info
@@ -226,15 +224,17 @@ func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (stri
 	}
 
 	// Extract job names from changed files
-	// Files follow pattern: <namespace>/<job-name>.hcl
+	// Files follow pattern: <region>/<namespace>/<job-name>.hcl
 	jobNames := make(map[string]bool)
+	targetPath := filepath.Join(region, namespace)
+
 	for _, file := range commitInfo.Files {
 		// Parse the file path
 		dir := filepath.Dir(file)
 		base := filepath.Base(file)
 
-		// Check if it's in the target namespace
-		if dir != namespace {
+		// Check if it's in the target region/namespace
+		if dir != targetPath {
 			continue
 		}
 
@@ -247,12 +247,12 @@ func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (stri
 
 	// Check how many unique jobs we found
 	if len(jobNames) == 0 {
-		return "", fmt.Errorf("no job files found in namespace '%s' for commit %s\n\n"+
+		return "", fmt.Errorf("no job files found in %s/%s for commit %s\n\n"+
 			"Changed files:\n"+
 			"%v\n\n"+
 			"Please specify job name explicitly:\n"+
-			"  ndiff deploy %s <job-name>",
-			namespace, commitHash, commitInfo.Files, commitHash)
+			"  ndiff deploy %s <job-name> --region %s --namespace %s",
+			region, namespace, commitHash, commitInfo.Files, commitHash, region, namespace)
 	}
 
 	if len(jobNames) > 1 {
@@ -264,8 +264,8 @@ func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (stri
 
 		return "", fmt.Errorf("commit affects multiple jobs: %v\n\n"+
 			"Please specify which job to deploy:\n"+
-			"  ndiff deploy %s <job-name>",
-			jobs, commitHash)
+			"  ndiff deploy %s <job-name> --region %s --namespace %s",
+			jobs, commitHash, region, namespace)
 	}
 
 	// Return the single job name
@@ -276,7 +276,7 @@ func detectJobFromCommit(cfg *config.Config, commitHash, namespace string) (stri
 	return "", fmt.Errorf("unexpected error detecting job name")
 }
 
-func getJobFromCommit(cfg *config.Config, commitHash, namespace, jobName string) ([]byte, error) {
+func getJobFromCommit(cfg *config.Config, commitHash, region, namespace, jobName string) ([]byte, error) {
 	// Check backend type
 	backendType := cfg.Git.Backend
 	if backendType == "" {
@@ -291,17 +291,10 @@ func getJobFromCommit(cfg *config.Config, commitHash, namespace, jobName string)
 			"  3. Deploy manually: nomad job run <file>", commitHash, jobName)
 	}
 
-	// Create Git client
-	gitClient, err := gitpkg.NewClient(&cfg.Git)
+	// Open local repository
+	repo, err := gitpkg.NewLocalRepository(cfg.Git.LocalPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Git client: %w", err)
-	}
-	defer gitClient.Close()
-
-	// Open repository
-	repo, err := gitClient.OpenOrClone()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open repository: %w", err)
+		return nil, fmt.Errorf("failed to open repository at %s: %w", cfg.Git.LocalPath, err)
 	}
 
 	// Get commits to find full hash
@@ -324,7 +317,7 @@ func getJobFromCommit(cfg *config.Config, commitHash, namespace, jobName string)
 	}
 
 	// Build file path
-	filePath := filepath.Join(namespace, jobName+".hcl")
+	filePath := filepath.Join(region, namespace, jobName+".hcl")
 
 	// Get file content at this commit
 	content, err := repo.GetFileAtCommit(fullHash, filePath)

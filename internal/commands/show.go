@@ -12,6 +12,7 @@ import (
 var (
 	showJob       string
 	showNamespace string
+	showRegion    string
 )
 
 // showCmd represents the show command
@@ -45,6 +46,7 @@ Examples:
 func init() {
 	showCmd.Flags().StringVar(&showJob, "job", "", "Job name to show")
 	showCmd.Flags().StringVar(&showNamespace, "namespace", "default", "Job namespace (used with --job)")
+	showCmd.Flags().StringVar(&showRegion, "region", "global", "Job region (used with --job)")
 
 	rootCmd.AddCommand(showCmd)
 }
@@ -76,17 +78,10 @@ func showRun(cmd *cobra.Command, args []string) error {
 func showGitCommit(cfg *config.Config, commitHash string) error {
 	PrintInfo(fmt.Sprintf("Loading commit %s...", commitHash))
 
-	// Create Git client
-	gitClient, err := gitpkg.NewClient(&cfg.Git)
+	// Open local repository
+	repo, err := gitpkg.NewLocalRepository(cfg.Git.LocalPath)
 	if err != nil {
-		return fmt.Errorf("failed to create Git client: %w", err)
-	}
-	defer gitClient.Close()
-
-	// Open repository
-	repo, err := gitClient.OpenOrClone()
-	if err != nil {
-		return fmt.Errorf("failed to open repository: %w", err)
+		return fmt.Errorf("failed to open repository at %s: %w", cfg.Git.LocalPath, err)
 	}
 
 	// Get commit info
@@ -127,7 +122,10 @@ func showGitCommit(cfg *config.Config, commitHash string) error {
 		if showNamespace == "" {
 			showNamespace = "default"
 		}
-		filePath = filepath.Join(showNamespace, showJob+".hcl")
+		if showRegion == "" {
+			showRegion = "global"
+		}
+		filePath = filepath.Join(showRegion, showNamespace, showJob+".hcl")
 	} else {
 		// Show all files changed in this commit
 		if len(matchingCommit.Files) == 0 {
@@ -213,12 +211,15 @@ func showGitHubCommit(cfg *config.Config, commitHash string) error {
 		if showNamespace == "" {
 			showNamespace = "default"
 		}
-		filePath := filepath.Join(showNamespace, showJob+".hcl")
+		if showRegion == "" {
+			showRegion = "global"
+		}
+		filePath := filepath.Join(showRegion, showNamespace, showJob+".hcl")
 
 		// Link to specific file in commit
 		fileURL := fmt.Sprintf("https://github.com/%s/%s/blob/%s/%s", owner, repo, commitHash, filePath)
 
-		fmt.Printf("📄 Job: %s/%s\n", showNamespace, showJob)
+		fmt.Printf("📄 Job: %s/%s/%s\n", showRegion, showNamespace, showJob)
 		fmt.Printf("🔗 View on GitHub: %s\n", fileURL)
 	} else {
 		// Link to commit

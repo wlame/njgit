@@ -59,14 +59,16 @@ func initRun(cmd *cobra.Command, args []string) error {
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
 	fmt.Println("Choose a backend for storing job configurations:")
-	fmt.Println("  1) Git Backend (default) - Works with any Git provider (GitHub, GitLab, etc.)")
-	fmt.Println("     • Maintains local repository")
-	fmt.Println("     • Supports SSH and HTTPS authentication")
-	fmt.Println("     • Best for local development")
+	fmt.Println("  1) Git Backend (default) - Local Git repository")
+	fmt.Println("     • Maintains local repository only")
+	fmt.Println("     • No authentication required")
+	fmt.Println("     • User manages remotes and push/pull manually")
+	fmt.Println("     • Best for local development and flexibility")
 	fmt.Println()
 	fmt.Println("  2) GitHub API Backend - Direct GitHub API integration")
 	fmt.Println("     • No local repository (stateless)")
 	fmt.Println("     • Requires GitHub token")
+	fmt.Println("     • Automatic push to GitHub")
 	fmt.Println("     • Best for CI/CD environments")
 	fmt.Println()
 
@@ -129,10 +131,12 @@ func initRun(cmd *cobra.Command, args []string) error {
 			}
 
 			namespace := prompt(reader, "  Namespace", "default")
+			region := prompt(reader, "  Region", "global")
 
 			config.WriteString("[[jobs]]\n")
 			config.WriteString(fmt.Sprintf("name = \"%s\"\n", jobName))
 			config.WriteString(fmt.Sprintf("namespace = \"%s\"\n", namespace))
+			config.WriteString(fmt.Sprintf("region = \"%s\"\n", region))
 			config.WriteString("\n")
 
 			jobNum++
@@ -142,11 +146,13 @@ func initRun(cmd *cobra.Command, args []string) error {
 			config.WriteString("# [[jobs]]\n")
 			config.WriteString("# name = \"my-job\"\n")
 			config.WriteString("# namespace = \"default\"\n")
+			config.WriteString("# region = \"global\"\n")
 		}
 	} else {
 		config.WriteString("# [[jobs]]\n")
 		config.WriteString("# name = \"my-job\"\n")
 		config.WriteString("# namespace = \"default\"\n")
+		config.WriteString("# region = \"global\"\n")
 	}
 
 	// Write config file
@@ -166,20 +172,31 @@ func initRun(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	if backend == "git" {
-		fmt.Println("1. Set up Git authentication:")
-		fmt.Println("   • For SSH: Ensure your SSH key is added to your Git provider")
-		fmt.Println("   • For HTTPS: Set GITHUB_TOKEN environment variable")
+		fmt.Println("1. Initialize your Git repository:")
+		fmt.Println("   cd . && git init")
+		fmt.Println()
+		fmt.Println("2. (Optional) Add a remote:")
+		fmt.Println("   git remote add origin <your-repo-url>")
+		fmt.Println()
+		fmt.Println("3. Verify your configuration:")
+		fmt.Println("   ndiff config check")
+		fmt.Println()
+		fmt.Println("4. Start syncing:")
+		fmt.Println("   ndiff sync")
+		fmt.Println()
+		fmt.Println("5. (Optional) Push to remote manually:")
+		fmt.Println("   git push origin main")
 	} else {
 		fmt.Println("1. Set your GitHub token:")
 		fmt.Println("   export GITHUB_TOKEN=\"ghp_your_token_here\"")
+		fmt.Println()
+		fmt.Println("2. Verify your configuration:")
+		fmt.Println("   ndiff config check")
+		fmt.Println()
+		fmt.Println("3. Start syncing:")
+		fmt.Println("   ndiff sync")
 	}
 
-	fmt.Println()
-	fmt.Println("2. Verify your configuration:")
-	fmt.Println("   ndiff config check")
-	fmt.Println()
-	fmt.Println("3. Start syncing:")
-	fmt.Println("   ndiff sync")
 	fmt.Println()
 
 	return nil
@@ -191,38 +208,17 @@ func configureGitBackend(reader *bufio.Reader, config *strings.Builder) {
 	fmt.Println("🔧 Git Backend Configuration")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
-
-	fmt.Println("Examples:")
-	fmt.Println("  SSH:   git@github.com:myorg/nomad-jobs.git")
-	fmt.Println("  HTTPS: https://github.com/myorg/nomad-jobs.git")
-	gitURL := prompt(reader, "Git repository URL", "")
-
-	branch := prompt(reader, "Branch", "main")
-
+	fmt.Println("Git backend works with a local repository only.")
+	fmt.Println("You'll need to initialize a Git repository yourself:")
+	fmt.Println("  cd /path/to/repo && git init")
 	fmt.Println()
-	fmt.Println("Authentication method:")
-	fmt.Println("  • ssh: Use SSH keys (recommended for local development)")
-	fmt.Println("  • token: Use personal access token (recommended for CI/CD)")
-	fmt.Println("  • auto: Try SSH first, fall back to token")
-	authMethod := promptChoice(reader, "Authentication method", []string{"auto", "ssh", "token"}, "auto")
+	fmt.Println("ndiff will only commit changes locally.")
+	fmt.Println("You manage remotes and push/pull manually using git commands.")
+	fmt.Println()
 
-	localPath := prompt(reader, "Local repository path", ".")
-	repoName := prompt(reader, "Repository directory name", "ndiff-repo")
+	localPath := prompt(reader, "Path to your Git repository", ".")
 
-	authorName := prompt(reader, "Git commit author name", "ndiff")
-	authorEmail := prompt(reader, "Git commit author email", "ndiff@localhost")
-
-	config.WriteString(fmt.Sprintf("url = \"%s\"\n", gitURL))
-	config.WriteString(fmt.Sprintf("branch = \"%s\"\n", branch))
-	config.WriteString(fmt.Sprintf("auth_method = \"%s\"\n", authMethod))
 	config.WriteString(fmt.Sprintf("local_path = \"%s\"\n", localPath))
-	config.WriteString(fmt.Sprintf("repo_name = \"%s\"\n", repoName))
-	config.WriteString(fmt.Sprintf("author_name = \"%s\"\n", authorName))
-	config.WriteString(fmt.Sprintf("author_email = \"%s\"\n", authorEmail))
-
-	if authMethod == "token" || authMethod == "auto" {
-		config.WriteString("# token = \"\"  # Or set GITHUB_TOKEN/GH_TOKEN environment variable\n")
-	}
 }
 
 func configureGitHubAPIBackend(reader *bufio.Reader, config *strings.Builder) {
