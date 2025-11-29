@@ -161,7 +161,7 @@ func writeTask(b *strings.Builder, task *api.Task) {
 	}
 
 	// Environment variables
-	if task.Env != nil && len(task.Env) > 0 {
+	if len(task.Env) > 0 {
 		writeMapBlock(b, 3, "env", task.Env)
 	}
 
@@ -171,7 +171,7 @@ func writeTask(b *strings.Builder, task *api.Task) {
 	}
 
 	// Meta
-	if task.Meta != nil && len(task.Meta) > 0 {
+	if len(task.Meta) > 0 {
 		writeMapBlock(b, 3, "meta", task.Meta)
 	}
 
@@ -257,30 +257,30 @@ func writeConfigValue(b *strings.Builder, level int, key string, value interface
 	case string:
 		fmt.Fprintf(b, "%s = \"%s\"\n", key, escapeString(v))
 	case int:
-		b.WriteString(fmt.Sprintf("%s = %d\n", key, v))
+		fmt.Fprintf(b, "%s = %d\n", key, v)
 	case int64:
-		b.WriteString(fmt.Sprintf("%s = %d\n", key, v))
+		fmt.Fprintf(b, "%s = %d\n", key, v)
 	case float64:
-		b.WriteString(fmt.Sprintf("%s = %g\n", key, v))
+		fmt.Fprintf(b, "%s = %g\n", key, v)
 	case bool:
-		b.WriteString(fmt.Sprintf("%s = %t\n", key, v))
+		fmt.Fprintf(b, "%s = %t\n", key, v)
 	case []interface{}:
 		// List of values
-		b.WriteString(fmt.Sprintf("%s = [", key))
+		fmt.Fprintf(b, "%s = [", key)
 		for i, item := range v {
 			if i > 0 {
 				b.WriteString(", ")
 			}
 			if s, ok := item.(string); ok {
-				b.WriteString(fmt.Sprintf("\"%s\"", escapeString(s)))
+				fmt.Fprintf(b, "\"%s\"", escapeString(s))
 			} else {
-				b.WriteString(fmt.Sprintf("%v", item))
+				fmt.Fprintf(b, "%v", item)
 			}
 		}
 		b.WriteString("]\n")
 	default:
 		// For other types, use default string representation
-		b.WriteString(fmt.Sprintf("%s = %v\n", key, v))
+		fmt.Fprintf(b, "%s = %v\n", key, v)
 	}
 }
 
@@ -291,7 +291,7 @@ func writeMapBlock(b *strings.Builder, level int, name string, m map[string]stri
 	}
 
 	indent(b, level)
-	b.WriteString(fmt.Sprintf("%s {\n", name))
+	fmt.Fprintf(b, "%s {\n", name)
 
 	// Sort keys for consistent output
 	keys := make([]string, 0, len(m))
@@ -303,7 +303,7 @@ func writeMapBlock(b *strings.Builder, level int, name string, m map[string]stri
 	// Write each key-value pair
 	for _, key := range keys {
 		indent(b, level+1)
-		b.WriteString(fmt.Sprintf("%s = \"%s\"\n", key, escapeString(m[key])))
+		fmt.Fprintf(b, "%s = \"%s\"\n", key, escapeString(m[key]))
 	}
 
 	indent(b, level)
@@ -316,13 +316,13 @@ func writeAttribute(b *strings.Builder, level int, name, value string) {
 		return
 	}
 	indent(b, level)
-	b.WriteString(fmt.Sprintf("%s = \"%s\"\n", name, escapeString(value)))
+	fmt.Fprintf(b, "%s = \"%s\"\n", name, escapeString(value))
 }
 
 // writeIntAttribute writes an integer attribute
 func writeIntAttribute(b *strings.Builder, level int, name string, value int) {
 	indent(b, level)
-	b.WriteString(fmt.Sprintf("%s = %d\n", name, value))
+	fmt.Fprintf(b, "%s = %d\n", name, value)
 }
 
 // writeListAttribute writes a list of strings
@@ -332,13 +332,13 @@ func writeListAttribute(b *strings.Builder, level int, name string, values []str
 	}
 
 	indent(b, level)
-	b.WriteString(fmt.Sprintf("%s = [", name))
+	fmt.Fprintf(b, "%s = [", name)
 
 	for i, v := range values {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(fmt.Sprintf("\"%s\"", escapeString(v)))
+		fmt.Fprintf(b, "\"%s\"", escapeString(v))
 	}
 
 	b.WriteString("]\n")

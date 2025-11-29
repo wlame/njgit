@@ -76,7 +76,7 @@ func (c *Client) OpenOrClone() (*Repository, error) {
 		if err != nil {
 			// Directory exists but isn't a valid git repo
 			// Remove it and clone fresh
-			os.RemoveAll(c.workDir)
+			_ = os.RemoveAll(c.workDir)
 			return c.clone()
 		}
 
@@ -85,7 +85,7 @@ func (c *Client) OpenOrClone() (*Repository, error) {
 		if err := c.pullLatest(repo); err != nil {
 			// Pull failed, might be due to local changes or conflicts
 			// For safety, remove and clone fresh
-			os.RemoveAll(c.workDir)
+			_ = os.RemoveAll(c.workDir)
 			return c.clone()
 		}
 

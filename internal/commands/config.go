@@ -260,7 +260,7 @@ func configCheckRun(cmd *cobra.Command, args []string) error {
 			fmt.Println("      • Verify repository URL is correct")
 		}
 	} else {
-		defer backend.Close()
+		defer func() { _ = backend.Close() }()
 
 		if err := backend.Initialize(); err != nil {
 			PrintError(fmt.Errorf("   ❌ Failed to initialize backend: %w", err))

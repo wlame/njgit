@@ -135,7 +135,7 @@ func deployRun(cmd *cobra.Command, args []string) error {
 		if job.Region != nil {
 			fmt.Printf("Region:    %s\n", *job.Region)
 		}
-		if job.Datacenters != nil && len(job.Datacenters) > 0 {
+		if len(job.Datacenters) > 0 {
 			fmt.Printf("Datacenters: %v\n", job.Datacenters)
 		}
 		fmt.Println()
@@ -158,7 +158,7 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Nomad client: %w", err)
 	}
-	defer nomadClient.Close()
+	defer func() { _ = nomadClient.Close() }()
 
 	// Deploy to Nomad
 	PrintInfo(fmt.Sprintf("Deploying %s/%s to Nomad...", *job.Namespace, *job.ID))

@@ -46,7 +46,7 @@ func init() {
 		"Job name to fetch (required)")
 
 	// Mark job as required
-	testFetchCmd.MarkFlagRequired("job")
+	_ = testFetchCmd.MarkFlagRequired("job")
 
 	// Add to root command
 	rootCmd.AddCommand(testFetchCmd)
@@ -85,7 +85,7 @@ func testFetchRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Nomad client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Test connectivity
 	PrintInfo("Testing Nomad connectivity...")

@@ -29,6 +29,7 @@ njgit.toml
 *.swp
 *.swo
 *~
+.claude
 
 # OS
 .DS_Store

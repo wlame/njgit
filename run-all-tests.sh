@@ -19,11 +19,29 @@ export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
 export TESTCONTAINERS_RYUK_DISABLED=true
 
 # Track results
+LINT_PASSED=0
 UNIT_PASSED=0
 INTEGRATION_PASSED=0
 
+# Run linter
+echo -e "${BLUE}[1/3] Running linter...${NC}"
+echo ""
+if bash run-lint.sh; then
+    LINT_PASSED=1
+    echo ""
+    echo -e "${GREEN}✅ Lint check passed${NC}"
+else
+    echo ""
+    echo -e "${RED}❌ Lint check failed${NC}"
+    exit 1
+fi
+
+echo ""
+echo "=================================="
+echo ""
+
 # Run unit tests
-echo -e "${BLUE}[1/2] Running unit tests...${NC}"
+echo -e "${BLUE}[2/3] Running unit tests...${NC}"
 echo ""
 if go test -v -short ./tests; then
     UNIT_PASSED=1
@@ -40,7 +58,7 @@ echo "=================================="
 echo ""
 
 # Run integration tests
-echo -e "${BLUE}[2/2] Running integration tests...${NC}"
+echo -e "${BLUE}[3/3] Running integration tests...${NC}"
 echo "  DOCKER_HOST=$DOCKER_HOST"
 echo "  TESTCONTAINERS_RYUK_DISABLED=$TESTCONTAINERS_RYUK_DISABLED"
 echo ""
@@ -56,10 +74,11 @@ fi
 
 echo ""
 echo "=================================="
-echo -e "${GREEN}  All Tests Passed! ✅${NC}"
+echo -e "${GREEN}  All Checks Passed! ✅${NC}"
 echo "=================================="
 echo ""
 echo "Summary:"
+echo "  Lint check: ✅ Passed"
 echo "  Unit tests: ✅ Passed"
 echo "  Integration tests: ✅ Passed"
 echo ""

@@ -103,7 +103,7 @@ func syncRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Nomad client: %w", err)
 	}
-	defer nomadClient.Close()
+	defer func() { _ = nomadClient.Close() }()
 
 	// Test Nomad connectivity
 	if err := nomadClient.Ping(); err != nil {
@@ -118,7 +118,7 @@ func syncRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create backend: %w", err)
 		}
-		defer backend.Close()
+		defer func() { _ = backend.Close() }()
 
 		if err := backend.Initialize(); err != nil {
 			return fmt.Errorf("failed to initialize backend: %w", err)

@@ -36,7 +36,7 @@ func TestNomadContainer(t *testing.T) {
 	// Start Nomad container
 	nomadC, addr, err := startNomadContainer(ctx)
 	require.NoError(t, err, "Failed to start Nomad container")
-	defer nomadC.Terminate(ctx)
+	defer func() { _ = nomadC.Terminate(ctx) }()
 
 	t.Logf("Nomad container started at: %s", addr)
 
@@ -49,7 +49,7 @@ func TestNomadContainer(t *testing.T) {
 
 	client, err := nomad.NewClient(auth)
 	require.NoError(t, err, "Failed to create Nomad client")
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Wait for Nomad API to be fully ready with retries
 	// The log message appears before the API is ready to accept connections
@@ -78,12 +78,12 @@ func TestFetchAndNormalizeJob(t *testing.T) {
 	// Start Nomad
 	nomadC, addr, err := startNomadContainer(ctx)
 	require.NoError(t, err)
-	defer nomadC.Terminate(ctx)
+	defer func() { _ = nomadC.Terminate(ctx) }()
 
 	// Create client
 	client, err := nomad.NewClient(&nomad.AuthConfig{Address: addr})
 	require.NoError(t, err)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Wait for Nomad API to be fully ready
 	time.Sleep(3 * time.Second)
@@ -154,7 +154,7 @@ func TestGitRepository(t *testing.T) {
 	// Create a temporary directory for the bare repo (acts as remote)
 	remoteDir, err := os.MkdirTemp("", "njgit-remote-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(remoteDir)
+	defer func() { _ = os.RemoveAll(remoteDir) }()
 
 	// Initialize bare Git repo (this acts as the "remote")
 	err = runCommand(remoteDir, "git", "init", "--bare")
@@ -166,7 +166,7 @@ func TestGitRepository(t *testing.T) {
 	// Bare repos need at least one commit before they can be cloned
 	workDir, err := os.MkdirTemp("", "njgit-work-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(workDir)
+	defer func() { _ = os.RemoveAll(workDir) }()
 
 	// Initialize and make initial commit
 	err = runCommand(workDir, "git", "init", "-b", "master")
@@ -244,7 +244,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 	// 1. Start Nomad
 	nomadC, nomadAddr, err := startNomadContainer(ctx)
 	require.NoError(t, err)
-	defer nomadC.Terminate(ctx)
+	defer func() { _ = nomadC.Terminate(ctx) }()
 
 	t.Logf("Nomad started at: %s", nomadAddr)
 
@@ -256,7 +256,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 	// 3. Create bare Git repo with initial commit
 	remoteDir, err := os.MkdirTemp("", "njgit-remote-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(remoteDir)
+	defer func() { _ = os.RemoveAll(remoteDir) }()
 
 	err = runCommand(remoteDir, "git", "init", "--bare")
 	require.NoError(t, err)
@@ -264,7 +264,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 	// Create initial commit (bare repo needs at least one commit)
 	workDir, err := os.MkdirTemp("", "njgit-work-*")
 	require.NoError(t, err)
-	defer os.RemoveAll(workDir)
+	defer func() { _ = os.RemoveAll(workDir) }()
 
 	err = runCommand(workDir, "git", "init", "-b", "master")
 	require.NoError(t, err)
@@ -290,7 +290,7 @@ func TestFullSyncWorkflow(t *testing.T) {
 	// 4. Set up clients
 	nomadClient, err := nomad.NewClient(&nomad.AuthConfig{Address: nomadAddr})
 	require.NoError(t, err)
-	defer nomadClient.Close()
+	defer func() { _ = nomadClient.Close() }()
 
 	// Open local repository directly (local-only mode)
 	repo, err := gitpkg.NewLocalRepository(workDir)
@@ -381,13 +381,13 @@ func startNomadContainer(ctx context.Context) (testcontainers.Container, string,
 	// Get the mapped port
 	mappedPort, err := container.MappedPort(ctx, "4646")
 	if err != nil {
-		container.Terminate(ctx)
+		_ = container.Terminate(ctx)
 		return nil, "", err
 	}
 
 	host, err := container.Host(ctx)
 	if err != nil {
-		container.Terminate(ctx)
+		_ = container.Terminate(ctx)
 		return nil, "", err
 	}
 
@@ -514,7 +514,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to start Nomad container: %v", err)
 	}
-	defer nomadContainer.Terminate(ctx)
+	defer func() { _ = nomadContainer.Terminate(ctx) }()
 
 	t.Logf("Nomad started at: %s", nomadAddr)
 
@@ -562,7 +562,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create local dir: %v", err)
 	}
-	defer os.RemoveAll(localDir)
+	defer func() { _ = os.RemoveAll(localDir) }()
 
 	t.Logf("Git local repo at: %s", localDir)
 
@@ -614,7 +614,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create nomad client: %v", err)
 	}
-	defer nomadClient.Close()
+	defer func() { _ = nomadClient.Close() }()
 
 	// Fetch and write v1
 	spec, err := nomadClient.FetchJobSpec("default", "rollback-test")

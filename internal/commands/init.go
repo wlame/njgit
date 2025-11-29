@@ -218,7 +218,7 @@ func configureGitBackend(reader *bufio.Reader, config *strings.Builder) {
 
 	localPath := prompt(reader, "Path to your Git repository", ".")
 
-	config.WriteString(fmt.Sprintf("local_path = \"%s\"\n", localPath))
+	fmt.Fprintf(config, "local_path = \"%s\"\n", localPath)
 }
 
 func configureGitHubAPIBackend(reader *bufio.Reader, config *strings.Builder) {
@@ -240,11 +240,11 @@ func configureGitHubAPIBackend(reader *bufio.Reader, config *strings.Builder) {
 	authorName := prompt(reader, "Git commit author name", "njgit")
 	authorEmail := prompt(reader, "Git commit author email", "njgit@localhost")
 
-	config.WriteString(fmt.Sprintf("owner = \"%s\"\n", owner))
-	config.WriteString(fmt.Sprintf("repo = \"%s\"\n", repo))
-	config.WriteString(fmt.Sprintf("branch = \"%s\"\n", branch))
-	config.WriteString(fmt.Sprintf("author_name = \"%s\"\n", authorName))
-	config.WriteString(fmt.Sprintf("author_email = \"%s\"\n", authorEmail))
+	fmt.Fprintf(config, "owner = \"%s\"\n", owner)
+	fmt.Fprintf(config, "repo = \"%s\"\n", repo)
+	fmt.Fprintf(config, "branch = \"%s\"\n", branch)
+	fmt.Fprintf(config, "author_name = \"%s\"\n", authorName)
+	fmt.Fprintf(config, "author_email = \"%s\"\n", authorEmail)
 	config.WriteString("# token = \"\"  # Or set GITHUB_TOKEN/GH_TOKEN environment variable\n")
 }
 

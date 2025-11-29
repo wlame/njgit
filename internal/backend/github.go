@@ -382,7 +382,7 @@ func (g *GitHubBackend) Commit(message string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to commit file %s: %w", path, err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Check response
 		if resp.StatusCode >= 400 {
