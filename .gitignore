@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-njgit
+/njgit
 dist/
 
 # Test binary, built with `go test -c`
