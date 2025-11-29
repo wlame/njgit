@@ -1,4 +1,4 @@
-# njgit
+# njgit — Nomad Jobs to Git
 
 A lightweight CLI tool that tracks HashiCorp Nomad job configuration changes using Git, providing version history and rollback capabilities.
 

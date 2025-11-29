@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION=${1:-dev}
+VERSION=${1:-$(cat VERSION 2>/dev/null || echo "0.1.0-dev")}
 COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 

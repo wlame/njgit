@@ -10,7 +10,7 @@ import "fmt"
 var (
 	// Version is the semantic version of the binary (e.g., "1.0.0")
 	// Set via: -ldflags "-X github.com/wlame/njgit/pkg/version.Version=1.0.0"
-	Version = "dev"
+	Version = "0.1.0-dev"
 
 	// Commit is the git commit hash the binary was built from
 	// Set via: -ldflags "-X github.com/wlame/njgit/pkg/version.Commit=abc123"
@@ -31,8 +31,9 @@ type Info struct {
 
 // Get returns the version information as a structured Info object
 // Example usage:
-//   info := version.Get()
-//   fmt.Printf("Version: %s\n", info.Version)
+//
+//	info := version.Get()
+//	fmt.Printf("Version: %s\n", info.Version)
 func Get() Info {
 	return Info{
 		Version:   Version,

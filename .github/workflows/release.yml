@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Matches v0.1.0, v1.2.3, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get tag name
+        id: tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Get version (strip 'v' prefix)
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          TAG: ${{ steps.tag.outputs.TAG }}
+        run: |
+          # Get commit hash and build time
+          COMMIT=$(git rev-parse --short HEAD)
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # LDFLAGS for version embedding
+          LDFLAGS="-X github.com/wlame/njgit/pkg/version.Version=${VERSION} \
+                   -X github.com/wlame/njgit/pkg/version.Commit=${COMMIT} \
+                   -X github.com/wlame/njgit/pkg/version.BuildTime=${BUILD_TIME}"
+
+          # Create dist directory
+          mkdir -p dist
+
+          # Build for multiple platforms
+          echo "Building for Linux amd64..."
+          GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/njgit-linux-amd64 ./cmd/njgit
+
+          echo "Building for Linux arm64..."
+          GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/njgit-linux-arm64 ./cmd/njgit
+
+          echo "Building for macOS amd64..."
+          GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/njgit-darwin-amd64 ./cmd/njgit
+
+          echo "Building for macOS arm64..."
+          GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o dist/njgit-darwin-arm64 ./cmd/njgit
+
+          echo "Building for Windows amd64..."
+          GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dist/njgit-windows-amd64.exe ./cmd/njgit
+
+          # Create checksums
+          cd dist
+          sha256sum * > checksums.txt
+          cd ..
+
+          echo "Build complete!"
+          ls -lh dist/
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## njgit ${{ steps.version.outputs.VERSION }}
+
+          ### Installation
+
+          Download the binary for your platform:
+
+          **Linux (amd64)**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.TAG }}/njgit-linux-amd64
+          chmod +x njgit-linux-amd64
+          sudo mv njgit-linux-amd64 /usr/local/bin/njgit
+          ```
+
+          **macOS (Apple Silicon)**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.TAG }}/njgit-darwin-arm64
+          chmod +x njgit-darwin-arm64
+          sudo mv njgit-darwin-arm64 /usr/local/bin/njgit
+          ```
+
+          **macOS (Intel)**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.TAG }}/njgit-darwin-amd64
+          chmod +x njgit-darwin-amd64
+          sudo mv njgit-darwin-amd64 /usr/local/bin/njgit
+          ```
+
+          **Windows**
+          Download `njgit-windows-amd64.exe` and add to your PATH.
+
+          ### Verify Installation
+          ```bash
+          njgit version
+          ```
+
+          ### What's Changed
+          See the commits since the last release for detailed changes.
+
+          ### Checksums
+          SHA256 checksums are available in `checksums.txt`.
+          EOF
+
+          echo "Release notes generated"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            dist/njgit-linux-amd64
+            dist/njgit-linux-arm64
+            dist/njgit-darwin-amd64
+            dist/njgit-darwin-arm64
+            dist/njgit-windows-amd64.exe
+            dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify release
+        run: |
+          echo "✅ Release ${{ steps.tag.outputs.TAG }} created successfully!"
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+          echo "Artifacts:"
+          ls -lh dist/
