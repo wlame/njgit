@@ -139,7 +139,7 @@ func (g *GitHubBackend) Initialize() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to GitHub API: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check response status
 	if resp.StatusCode == 401 {
@@ -187,7 +187,7 @@ func (g *GitHubBackend) ReadFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file from GitHub: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Handle 404 - file doesn't exist
 	if resp.StatusCode == 404 {
@@ -284,7 +284,7 @@ func (g *GitHubBackend) FileExists(path string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to check file existence: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// 404 means file doesn't exist
 	if resp.StatusCode == 404 {

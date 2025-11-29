@@ -140,7 +140,6 @@ func configCheckRun(cmd *cobra.Command, args []string) error {
 	fmt.Println("2️⃣  Validating configuration...")
 	if err := cfg.Validate(); err != nil {
 		PrintError(fmt.Errorf("   ❌ Configuration validation failed: %w", err))
-		checksFailed++
 		fmt.Println()
 		fmt.Println("💡 Tip: Check your configuration file for missing or invalid fields")
 		return err
@@ -178,7 +177,7 @@ func configCheckRun(cmd *cobra.Command, args []string) error {
 			PrintError(fmt.Errorf("   ❌ Failed to create Nomad client: %w", err))
 			checksFailed++
 		} else {
-			defer nomadClient.Close()
+			defer func() { _ = nomadClient.Close() }()
 
 			if err := nomadClient.Ping(); err != nil {
 				PrintError(fmt.Errorf("   ❌ Failed to connect to Nomad: %w", err))

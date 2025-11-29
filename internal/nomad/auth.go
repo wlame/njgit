@@ -64,7 +64,7 @@ func ResolveAuth(cfg *config.NomadConfig, cliToken, cliAddr string) (*AuthConfig
 		auth.Address = envAddr
 	} else {
 		// No address found - this is required
-		return nil, fmt.Errorf("Nomad address not configured (set via --nomad-addr flag, config file, or NOMAD_ADDR env var)")
+		return nil, fmt.Errorf("nomad address not configured (set via --nomad-addr flag, config file, or NOMAD_ADDR env var)")
 	}
 
 	// Resolve Token
@@ -130,13 +130,13 @@ func readTokenFile() string {
 func (a *AuthConfig) ValidateAuth() error {
 	// Address is required
 	if a.Address == "" {
-		return fmt.Errorf("Nomad address is required")
+		return fmt.Errorf("nomad address is required")
 	}
 
 	// Basic URL format check
 	// In Go, we should ensure the URL has a scheme (http:// or https://)
 	if !strings.HasPrefix(a.Address, "http://") && !strings.HasPrefix(a.Address, "https://") {
-		return fmt.Errorf("Nomad address must start with http:// or https://, got: %s", a.Address)
+		return fmt.Errorf("nomad address must start with http:// or https://, got: %s", a.Address)
 	}
 
 	// Token is optional, but if TLS is enabled and no token is provided,

@@ -51,13 +51,14 @@ func (g *GitConfig) Validate() error {
 	}
 
 	// Validate based on backend type
-	if backend == "git" {
+	switch backend {
+	case "git":
 		// Git backend is local-only
 		// Requires local_path to point to an existing git repository
 		if g.LocalPath == "" {
 			return fmt.Errorf("local_path is required for git backend")
 		}
-	} else if backend == "github-api" {
+	case "github-api":
 		// GitHub API backend requires owner, repo, and token
 		if g.Owner == "" {
 			return fmt.Errorf("owner is required for github-api backend")
@@ -119,24 +120,6 @@ func (j *JobConfig) Validate() error {
 	}
 
 	return nil
-}
-
-// isValidGitURL checks if a string is a valid Git URL
-// It accepts both SSH and HTTPS formats
-func isValidGitURL(gitURL string) bool {
-	// Check for SSH format: git@github.com:user/repo.git
-	if strings.HasPrefix(gitURL, "git@") || strings.HasPrefix(gitURL, "ssh://") {
-		return true
-	}
-
-	// Check for HTTPS format: https://github.com/user/repo.git
-	if strings.HasPrefix(gitURL, "https://") || strings.HasPrefix(gitURL, "http://") {
-		// Try to parse as URL
-		_, err := url.Parse(gitURL)
-		return err == nil
-	}
-
-	return false
 }
 
 // contains checks if a slice contains a specific string

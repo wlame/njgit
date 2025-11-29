@@ -195,7 +195,7 @@ func TestGitHubBackend_ReadFile(t *testing.T) {
 
 				w.WriteHeader(tt.statusCode)
 				if tt.response != nil {
-					json.NewEncoder(w).Encode(tt.response)
+					_ = json.NewEncoder(w).Encode(tt.response)
 				}
 			}))
 			defer server.Close()
@@ -340,7 +340,7 @@ func TestGitHubBackend_WriteAndCommit(t *testing.T) {
 
 			// Return success response
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(githubCommitResponse{
+			_ = json.NewEncoder(w).Encode(githubCommitResponse{
 				Content: struct {
 					SHA string `json:"sha"`
 				}{SHA: "file-sha-123"},

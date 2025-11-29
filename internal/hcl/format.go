@@ -48,7 +48,7 @@ func FormatJobAsHCL(job *api.Job) ([]byte, error) {
 	writeJobAttributes(&b, job)
 
 	// Write task groups
-	if job.TaskGroups != nil && len(job.TaskGroups) > 0 {
+	if len(job.TaskGroups) > 0 {
 		for _, tg := range job.TaskGroups {
 			writeTaskGroup(&b, tg)
 		}
@@ -70,7 +70,7 @@ func writeJobAttributes(b *strings.Builder, job *api.Job) {
 	}
 
 	// Datacenters (list of strings)
-	if job.Datacenters != nil && len(job.Datacenters) > 0 {
+	if len(job.Datacenters) > 0 {
 		writeListAttribute(b, 1, "datacenters", job.Datacenters)
 	}
 
@@ -90,7 +90,7 @@ func writeJobAttributes(b *strings.Builder, job *api.Job) {
 	}
 
 	// Meta (key-value pairs)
-	if job.Meta != nil && len(job.Meta) > 0 {
+	if len(job.Meta) > 0 {
 		writeMapBlock(b, 1, "meta", job.Meta)
 	}
 
@@ -113,7 +113,7 @@ func writeTaskGroup(b *strings.Builder, tg *api.TaskGroup) {
 	// Write task group block
 	// Indentation level 1 (inside job block)
 	indent(b, 1)
-	b.WriteString(fmt.Sprintf("group \"%s\" {\n", stringValue(tg.Name)))
+	fmt.Fprintf(b, "group \"%s\" {\n", stringValue(tg.Name))
 
 	// Count (number of instances)
 	if tg.Count != nil {
@@ -121,12 +121,12 @@ func writeTaskGroup(b *strings.Builder, tg *api.TaskGroup) {
 	}
 
 	// Meta
-	if tg.Meta != nil && len(tg.Meta) > 0 {
+	if len(tg.Meta) > 0 {
 		writeMapBlock(b, 2, "meta", tg.Meta)
 	}
 
 	// Write tasks
-	if tg.Tasks != nil && len(tg.Tasks) > 0 {
+	if len(tg.Tasks) > 0 {
 		b.WriteString("\n")
 		for _, task := range tg.Tasks {
 			writeTask(b, task)
@@ -148,7 +148,7 @@ func writeTask(b *strings.Builder, task *api.Task) {
 	// Write task block
 	// Indentation level 2 (inside task group)
 	indent(b, 2)
-	b.WriteString(fmt.Sprintf("task \"%s\" {\n", task.Name))
+	fmt.Fprintf(b, "task \"%s\" {\n", task.Name)
 
 	// Driver (docker, exec, java, etc.)
 	if task.Driver != "" {
@@ -156,7 +156,7 @@ func writeTask(b *strings.Builder, task *api.Task) {
 	}
 
 	// Config (driver-specific configuration)
-	if task.Config != nil && len(task.Config) > 0 {
+	if len(task.Config) > 0 {
 		writeConfigBlock(b, 3, task.Config)
 	}
 
@@ -255,7 +255,7 @@ func writeConfigValue(b *strings.Builder, level int, key string, value interface
 
 	switch v := value.(type) {
 	case string:
-		b.WriteString(fmt.Sprintf("%s = \"%s\"\n", key, escapeString(v)))
+		fmt.Fprintf(b, "%s = \"%s\"\n", key, escapeString(v))
 	case int:
 		b.WriteString(fmt.Sprintf("%s = %d\n", key, v))
 	case int64:

@@ -68,7 +68,7 @@ func (g *GitBackend) Initialize() error {
 			"Please initialize a Git repository first:\n"+
 			"  cd %s\n"+
 			"  git init\n\n"+
-			"Then run njgit again.", g.localPath, g.localPath)
+			"Then run njgit again", g.localPath, g.localPath)
 	}
 
 	// Open the existing repository

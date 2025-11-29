@@ -41,24 +41,6 @@ func ResolveAuthWithMethod(cfg *config.GitConfig, method string) (transport.Auth
 	return nil, nil
 }
 
-// Legacy function kept for compatibility
-func resolveAuthLegacy(cfg *config.GitConfig) (transport.AuthMethod, error) {
-	// Try SSH first (common for developers)
-	auth, err := ResolveSSHAuth(cfg)
-	if err == nil {
-		return auth, nil
-	}
-
-	// SSH failed, try token (common for CI/CD)
-	auth, err = ResolveTokenAuth(cfg)
-	if err == nil {
-		return auth, nil
-	}
-
-	// Both failed
-	return nil, fmt.Errorf("failed to resolve authentication (tried SSH and token)")
-}
-
 // ResolveSSHAuth creates SSH-based authentication
 // This is the preferred method for developers with SSH keys set up.
 //

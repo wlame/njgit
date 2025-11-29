@@ -573,13 +573,13 @@ func TestHistoryAndDeploy(t *testing.T) {
 	}
 
 	// Configure git user for this repo
-	exec.Command("git", "-C", localDir, "config", "user.email", "test@test.com").Run()
-	exec.Command("git", "-C", localDir, "config", "user.name", "test").Run()
+	_ = exec.Command("git", "-C", localDir, "config", "user.email", "test@test.com").Run()
+	_ = exec.Command("git", "-C", localDir, "config", "user.name", "test").Run()
 
 	// Create initial commit
-	os.WriteFile(filepath.Join(localDir, "README.md"), []byte("# Test"), 0644)
-	exec.Command("git", "-C", localDir, "add", ".").Run()
-	exec.Command("git", "-C", localDir, "commit", "-m", "Initial commit").Run()
+	_ = os.WriteFile(filepath.Join(localDir, "README.md"), []byte("# Test"), 0644)
+	_ = exec.Command("git", "-C", localDir, "add", ".").Run()
+	_ = exec.Command("git", "-C", localDir, "commit", "-m", "Initial commit").Run()
 
 	// Create config (simplified for local-only git backend)
 	cfg := &config.Config{
@@ -600,7 +600,7 @@ func TestHistoryAndDeploy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create backend: %v", err)
 	}
-	defer backend.Close()
+	defer func() { _ = backend.Close() }()
 
 	if err := backend.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize backend: %v", err)
