@@ -4,15 +4,17 @@ A lightweight CLI tool that tracks HashiCorp Nomad job configuration changes usi
 
 ## What is njgit?
 
-njgit automatically syncs your Nomad job specifications to Git, creating a version-controlled history of all changes. It detects configuration changes, commits them with detailed messages, and allows you to view history and rollback to previous versions.
+njgit syncs your Nomad job specifications to Git, creating a version-controlled history of all changes. It detects configuration changes, commits them with detailed messages, and allows you to view history and rollback to previous versions.
+
+⚠️ **Vibecode alert** — This tool was implemented using LLMs.
 
 **Key Features:**
-- 🔄 **Automatic change detection** - Only commits when jobs actually change
-- 📜 **Version history** - Track all configuration changes over time
-- ⏮️  **Easy rollback** - Deploy any previous version with one command
-- 🌍 **Multi-region support** - Organize jobs by region/namespace/name
-- 🔧 **Flexible backends** - Local Git or GitHub API
-- 🚀 **Simple setup** - Interactive wizard gets you started in minutes
+- **Automatic change detection** - Only commits when jobs actually change
+- **Version history** - Track all configuration changes over time
+-  **Easy rollback** - Deploy any previous version with one command
+- **Multi-region support** - Organize jobs by region/namespace/name
+- **Flexible backends** - Local Git or GitHub API
+- **Simple setup** - Interactive wizard gets you started in minutes
 
 ## Quick Start
 

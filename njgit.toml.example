@@ -1,5 +1,5 @@
-# Example configuration file for nomad-changelog
-# Copy this file to nomad-changelog.toml and adjust for your environment
+# Example configuration file for njgit
+# Copy this file to njgit.toml and adjust for your environment
 
 # Git repository configuration
 [git]
@@ -26,11 +26,11 @@ ssh_key_path = ""
 # Leave empty to read from environment variable
 github_token = ""
 
-# Git commit author name (default: nomad-changelog)
-author_name = "nomad-changelog"
+# Git commit author name (default: njgit)
+author_name = "njgit"
 
-# Git commit author email (default: nomad-changelog@localhost)
-author_email = "bot@example.com"
+# Git commit author email (default: njgitbot@yourcompany.com)
+author_email = "njgitbot@yourcompany.com"
 
 # Nomad configuration
 [nomad]
