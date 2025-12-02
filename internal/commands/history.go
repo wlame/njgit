@@ -26,7 +26,6 @@ var historyCmd = &cobra.Command{
 
 This shows all changes made to your job configurations over time, allowing you to:
   • See when jobs were changed
-  • View who made the changes
   • Identify specific versions for rollback
 
 You can filter by job name/namespace or show all changes.
@@ -39,10 +38,7 @@ Examples:
   njgit history --limit 10
 
   # Show history for specific job
-  njgit history --job web-app --namespace default
-
-  # Verbose output with file names
-  njgit history --verbose`,
+  njgit history --job web-app --namespace default`,
 	RunE: historyRun,
 }
 
@@ -120,59 +116,31 @@ func showGitHistory(cfg *config.Config) error {
 		return nil
 	}
 
-	// Display history
-	fmt.Println()
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println("📜 Commit History")
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Println()
-
-	for i, commit := range commits {
+	// Display history - one line per commit
+	for _, commit := range commits {
 		// Format date
 		dateStr := formatDate(commit.Date)
 
-		// Print commit info
-		fmt.Printf("commit %s\n", commit.Hash)
-		fmt.Printf("Author: %s <%s>\n", commit.Author, commit.Email)
-		fmt.Printf("Date:   %s\n", dateStr)
-		fmt.Println()
+		// Extract job name from files if available
+		jobName := ""
+		if len(commit.Files) > 0 {
+			// Files are in format: region/namespace/jobname.hcl
+			// Extract the full job path and remove .hcl extension
+			filePath := commit.Files[0]
+			jobName = strings.TrimSuffix(filePath, ".hcl")
+		}
 
-		// Print commit message (indent)
+		// Get first line of commit message
 		messageLines := strings.Split(commit.Message, "\n")
-		for _, line := range messageLines {
-			fmt.Printf("    %s\n", line)
-		}
+		firstLine := messageLines[0]
 
-		// Print files if verbose
-		if IsVerbose() && len(commit.Files) > 0 {
-			fmt.Println()
-			for _, file := range commit.Files {
-				fmt.Printf("    📄 %s\n", file)
-			}
-		}
-
-		// Separator between commits
-		if i < len(commits)-1 {
-			fmt.Println()
-			fmt.Println("────────────────────────────────────────────")
-			fmt.Println()
+		// Print one-line format: date hash job message
+		if jobName != "" {
+			fmt.Printf("%s %s %s %s\n", dateStr, commit.Hash, jobName, firstLine)
+		} else {
+			fmt.Printf("%s %s %s\n", dateStr, commit.Hash, firstLine)
 		}
 	}
-
-	// Show summary
-	fmt.Println()
-	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	fmt.Printf("Showing %d commit(s)\n", len(commits))
-	fmt.Println()
-
-	// Show next steps
-	fmt.Println("💡 Next steps:")
-	fmt.Println("  • View a specific version: njgit show <commit-hash>")
-	fmt.Println("  • Deploy a previous version: njgit deploy <commit-hash> <job>")
-	if !IsVerbose() {
-		fmt.Println("  • Show changed files: njgit history --verbose")
-	}
-	fmt.Println()
 
 	return nil
 }
@@ -219,36 +187,7 @@ func showGitHubHistory(cfg *config.Config) error {
 	return nil
 }
 
-// formatDate formats a time.Time into a human-readable string
+// formatDate formats a time.Time into YYYY-MM-DD HH:MM format
 func formatDate(t time.Time) string {
-	now := time.Now()
-	diff := now.Sub(t)
-
-	// If less than 24 hours ago, show relative time
-	if diff < 24*time.Hour {
-		if diff < time.Hour {
-			minutes := int(diff.Minutes())
-			if minutes <= 1 {
-				return "1 minute ago"
-			}
-			return fmt.Sprintf("%d minutes ago", minutes)
-		}
-		hours := int(diff.Hours())
-		if hours == 1 {
-			return "1 hour ago"
-		}
-		return fmt.Sprintf("%d hours ago", hours)
-	}
-
-	// If less than 7 days ago, show days
-	if diff < 7*24*time.Hour {
-		days := int(diff.Hours() / 24)
-		if days == 1 {
-			return "1 day ago"
-		}
-		return fmt.Sprintf("%d days ago", days)
-	}
-
-	// Otherwise show full date
-	return t.Format("Mon Jan 2 15:04:05 2006 -0700")
+	return t.Format("2006-01-02 15:04")
 }
