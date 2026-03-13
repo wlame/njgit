@@ -4,6 +4,7 @@ package tests
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -402,6 +403,87 @@ func TestHistoryLimit(t *testing.T) {
 	assert.Contains(t, history[0].Message, "Commit 10", "Should return the most recent commit")
 
 	t.Log("✅ History limit works correctly")
+}
+
+// TestBuildNomadConfig_DefaultOptions tests that empty ParseOptions produce a default config
+func TestBuildNomadConfig_DefaultOptions(t *testing.T) {
+	config := hcl.BuildNomadConfig(hcl.ParseOptions{})
+
+	// Should use default address (from env or api.DefaultConfig)
+	defaultConfig := api.DefaultConfig()
+	assert.Equal(t, defaultConfig.Address, config.Address, "Should use default Nomad address")
+
+	// TLS should NOT be insecure by default
+	assert.False(t, config.TLSConfig.Insecure, "TLS should not be insecure by default")
+	assert.Empty(t, config.TLSConfig.CACert, "CACert should be empty by default")
+}
+
+// TestBuildNomadConfig_CustomAddress tests that NomadAddr overrides the default
+func TestBuildNomadConfig_CustomAddress(t *testing.T) {
+	config := hcl.BuildNomadConfig(hcl.ParseOptions{
+		NomadAddr: "http://nomad.example.com:4646",
+	})
+
+	assert.Equal(t, "http://nomad.example.com:4646", config.Address)
+	assert.False(t, config.TLSConfig.Insecure, "TLS should not be insecure when only address is set")
+}
+
+// TestBuildNomadConfig_TLSSkipVerify tests that TLSSkipVerify sets Insecure flag
+func TestBuildNomadConfig_TLSSkipVerify(t *testing.T) {
+	config := hcl.BuildNomadConfig(hcl.ParseOptions{
+		TLSSkipVerify: true,
+	})
+
+	assert.True(t, config.TLSConfig.Insecure, "TLS should be insecure when TLSSkipVerify is true")
+}
+
+// TestBuildNomadConfig_TLSSkipVerifyFalse tests that TLSSkipVerify=false does not set Insecure
+func TestBuildNomadConfig_TLSSkipVerifyFalse(t *testing.T) {
+	config := hcl.BuildNomadConfig(hcl.ParseOptions{
+		TLSSkipVerify: false,
+	})
+
+	assert.False(t, config.TLSConfig.Insecure, "TLS should not be insecure when TLSSkipVerify is false")
+}
+
+// TestBuildNomadConfig_CACert tests that CACert is forwarded to config
+func TestBuildNomadConfig_CACert(t *testing.T) {
+	config := hcl.BuildNomadConfig(hcl.ParseOptions{
+		CACert: "/path/to/ca.pem",
+	})
+
+	assert.Equal(t, "/path/to/ca.pem", config.TLSConfig.CACert)
+	assert.False(t, config.TLSConfig.Insecure, "CACert should not affect Insecure flag")
+}
+
+// TestBuildNomadConfig_AllOptions tests all options together
+func TestBuildNomadConfig_AllOptions(t *testing.T) {
+	config := hcl.BuildNomadConfig(hcl.ParseOptions{
+		NomadAddr:     "https://nomad.internal:4646",
+		TLSSkipVerify: true,
+		CACert:        "/etc/ssl/nomad-ca.pem",
+	})
+
+	assert.Equal(t, "https://nomad.internal:4646", config.Address)
+	assert.True(t, config.TLSConfig.Insecure)
+	assert.Equal(t, "/etc/ssl/nomad-ca.pem", config.TLSConfig.CACert)
+}
+
+// TestParseHCL_EmptyContent tests that ParseHCL rejects empty content
+func TestParseHCL_EmptyContent(t *testing.T) {
+	_, err := hcl.ParseHCL([]byte{}, hcl.ParseOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "HCL content is empty")
+}
+
+// TestUnsafeFlag_ExistsInHelp tests that the --unsafe flag appears in CLI help
+func TestUnsafeFlag_ExistsInHelp(t *testing.T) {
+	cmd := exec.Command("go", "run", "../cmd/njgit", "--help")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Failed to run njgit --help: %s", string(output))
+
+	assert.Contains(t, string(output), "--unsafe", "Help should mention --unsafe flag")
+	assert.Contains(t, string(output), "skip TLS certificate verification", "Help should describe --unsafe")
 }
 
 // TestHistoryDateFormat tests that the date formatting is consistent

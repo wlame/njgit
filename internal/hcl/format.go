@@ -392,12 +392,8 @@ type ParseOptions struct {
 // Returns:
 //   - *api.Job: The parsed job
 //   - error: Any error encountered during parsing
-func ParseHCL(hclContent []byte, opts ParseOptions) (*api.Job, error) {
-	if len(hclContent) == 0 {
-		return nil, fmt.Errorf("HCL content is empty")
-	}
-
-	// Create a Nomad client configuration
+// BuildNomadConfig creates a Nomad API client config from ParseOptions.
+func BuildNomadConfig(opts ParseOptions) *api.Config {
 	config := api.DefaultConfig()
 
 	if opts.NomadAddr != "" {
@@ -410,6 +406,16 @@ func ParseHCL(hclContent []byte, opts ParseOptions) (*api.Job, error) {
 	if opts.CACert != "" {
 		config.TLSConfig.CACert = opts.CACert
 	}
+
+	return config
+}
+
+func ParseHCL(hclContent []byte, opts ParseOptions) (*api.Job, error) {
+	if len(hclContent) == 0 {
+		return nil, fmt.Errorf("HCL content is empty")
+	}
+
+	config := BuildNomadConfig(opts)
 
 	client, err := api.NewClient(config)
 	if err != nil {
