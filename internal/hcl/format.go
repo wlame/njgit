@@ -375,16 +375,24 @@ func escapeString(s string) string {
 	return s
 }
 
+// ParseOptions configures the Nomad API client used for HCL parsing.
+type ParseOptions struct {
+	NomadAddr     string
+	TLSSkipVerify bool
+	CACert        string
+}
+
 // ParseHCL parses HCL content and returns a Nomad Job struct
 // This uses the Nomad API client to parse HCL
 //
 // Parameters:
 //   - hclContent: The HCL content as bytes
+//   - opts: Configuration for the Nomad API client
 //
 // Returns:
 //   - *api.Job: The parsed job
 //   - error: Any error encountered during parsing
-func ParseHCL(hclContent []byte, nomadAddr ...string) (*api.Job, error) {
+func ParseHCL(hclContent []byte, opts ParseOptions) (*api.Job, error) {
 	if len(hclContent) == 0 {
 		return nil, fmt.Errorf("HCL content is empty")
 	}
@@ -392,14 +400,15 @@ func ParseHCL(hclContent []byte, nomadAddr ...string) (*api.Job, error) {
 	// Create a Nomad client configuration
 	config := api.DefaultConfig()
 
-	// If a Nomad address is provided, use it
-	if len(nomadAddr) > 0 && nomadAddr[0] != "" {
-		config.Address = nomadAddr[0]
+	if opts.NomadAddr != "" {
+		config.Address = opts.NomadAddr
 	}
 
-	// Disable TLS verification for testing
-	config.TLSConfig = &api.TLSConfig{
-		Insecure: true,
+	if opts.TLSSkipVerify {
+		config.TLSConfig.Insecure = true
+	}
+	if opts.CACert != "" {
+		config.TLSConfig.CACert = opts.CACert
 	}
 
 	client, err := api.NewClient(config)

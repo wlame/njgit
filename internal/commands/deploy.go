@@ -112,7 +112,11 @@ func deployRun(cmd *cobra.Command, args []string) error {
 	// Parse HCL to Job struct
 	// We need to pass the Nomad address because ParseHCL makes a request to Nomad
 	PrintInfo("Parsing job specification...")
-	job, err := hcl.ParseHCL(jobHCL, cfg.Nomad.Address)
+	job, err := hcl.ParseHCL(jobHCL, hcl.ParseOptions{
+		NomadAddr:     cfg.Nomad.Address,
+		TLSSkipVerify: cfg.Nomad.TLSSkipVerify || unsafeSkipTLS,
+		CACert:        cfg.Nomad.CACert,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to parse HCL: %w", err)
 	}

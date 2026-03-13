@@ -18,6 +18,10 @@ var (
 	// verbose enables verbose output
 	// This is set by the --verbose flag
 	verbose bool
+
+	// unsafeSkipTLS skips TLS certificate verification for Nomad connections
+	// This is set by the --unsafe flag
+	unsafeSkipTLS bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -85,6 +89,10 @@ func init() {
 	// --verbose flag: Enable verbose output
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false,
 		"verbose output")
+
+	// --unsafe flag: Skip TLS certificate verification
+	rootCmd.PersistentFlags().BoolVar(&unsafeSkipTLS, "unsafe", false,
+		"skip TLS certificate verification for Nomad connections")
 
 	// Add version command
 	// This is a built-in command that shows version information

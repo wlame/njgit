@@ -719,7 +719,10 @@ func TestHistoryAndDeploy(t *testing.T) {
 	}
 
 	// Parse the HCL (pass Nomad address since ParseHCL makes a request to Nomad)
-	jobFromV1, err := hcl.ParseHCL(v1Content, nomadAddr)
+	jobFromV1, err := hcl.ParseHCL(v1Content, hcl.ParseOptions{
+		NomadAddr:     nomadAddr,
+		TLSSkipVerify: true, // test container doesn't use TLS
+	})
 	if err != nil {
 		t.Fatalf("Failed to parse HCL from v1: %v", err)
 	}
